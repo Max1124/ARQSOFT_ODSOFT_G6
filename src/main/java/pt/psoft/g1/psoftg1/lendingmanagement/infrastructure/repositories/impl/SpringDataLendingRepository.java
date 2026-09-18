@@ -1,6 +1,7 @@
 package pt.psoft.g1.psoftg1.lendingmanagement.infrastructure.repositories.impl;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.Tuple;
 import jakarta.persistence.TypedQuery;
 import jakarta.persistence.criteria.*;
 import lombok.RequiredArgsConstructor;
@@ -9,15 +10,19 @@ import org.springframework.data.repository.CrudRepository;
 import org.springframework.data.repository.query.Param;
 import org.springframework.util.StringUtils;
 import pt.psoft.g1.psoftg1.bookmanagement.model.Book;
+import pt.psoft.g1.psoftg1.genremanagement.services.GenreLendingsDTO;
+import pt.psoft.g1.psoftg1.genremanagement.services.GenreLendingsPerMonthDTO;
 import pt.psoft.g1.psoftg1.lendingmanagement.model.Lending;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
 import pt.psoft.g1.psoftg1.readermanagement.model.ReaderDetails;
+import pt.psoft.g1.psoftg1.readermanagement.services.ReaderAverageDto;
+import pt.psoft.g1.psoftg1.readermanagement.services.ReaderLendingsAvgPerMonthDto;
 import pt.psoft.g1.psoftg1.shared.services.Page;
+import pt.psoft.g1.psoftg1.usermanagement.model.User;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.time.LocalDateTime;
+import java.util.*;
 
 public interface SpringDataLendingRepository extends LendingRepository, LendingRepoCustom, CrudRepository<Lending, Long> {
     @Override
@@ -73,6 +78,7 @@ public interface SpringDataLendingRepository extends LendingRepository, LendingR
 interface LendingRepoCustom {
     List<Lending> getOverdue(Page page);
     List<Lending> searchLendings(Page page, String readerNumber, String isbn, Boolean returned, LocalDate startDate, LocalDate endDate);
+//    List<ReaderAverageDto> getAverageMonthlyPerReader(LocalDate startDate, LocalDate endDate);
 
 }
 
@@ -142,4 +148,73 @@ class LendingRepoCustomImpl implements LendingRepoCustom {
 
         return q.getResultList();
     }
+
+/*
+    @Override
+    public List<ReaderAverageDto> getAverageMonthlyPerReader(LocalDate startDate, LocalDate endDate) {
+        final CriteriaBuilder cb = em.getCriteriaBuilder();
+        final CriteriaQuery<Tuple> cq = cb.createTupleQuery();
+        final Root<Lending> lendingRoot = cq.from(Lending.class);
+        final Join<ReaderDetails, Lending> readerDetailsJoin = lendingRoot.join("readerDetails");
+        final Join<ReaderDetails, User> userJoin = readerDetailsJoin.join("user");
+
+        final List<Predicate> where = new ArrayList<>();
+
+        Expression<Integer> yearExpr = cb.function("YEAR", Integer.class, lendingRoot.get("startDate"));
+        Expression<Integer> monthExpr = cb.function("MONTH", Integer.class, lendingRoot.get("startDate"));
+
+        Expression<Double> lendingCount = cb.count(lendingRoot).as(Double.class);
+
+        Expression<Double> diffInMonths = cb.function(
+                "date_part", Double.class, cb.literal("month"),
+                cb.literal(LocalDate.now())
+        );
+
+        Expression<Double> lendingsAveragePerMonth = cb.diff(lendingCount, diffInMonths);
+
+
+
+        cq.multiselect(readerDetailsJoin, yearExpr, monthExpr, durationInMonths);
+
+        Expression<Long> durationInMonths = cb.quot(diffInDays, 30L);
+
+        if(startDate!=null)
+            where.add(cb.greaterThanOrEqualTo(lendingRoot.get("startDate"), startDate));
+        if(endDate!=null)
+            where.add(cb.lessThanOrEqualTo(lendingRoot.get("startDate"), endDate));
+
+        cq.where(where.toArray(new Predicate[0]));
+        cq.groupBy(readerDetailsJoin.get("readerNumber"), yearExpr, monthExpr);
+        cq.orderBy(cb.asc(lendingRoot.get("lendingNumber")));
+
+        List<Tuple> results = em.createQuery(cq).getResultList();
+        Map<Integer, Map<Integer, List<ReaderAverageDto>>> groupedResults = new HashMap<>();
+
+
+        for (Tuple result : results) {
+            ReaderDetails readerDetails = result.get(0, ReaderDetails.class);
+            int yearValue = result.get(1, Integer.class);
+            int monthValue = result.get(2, Integer.class);
+            Double averageDurationValue = result.get(3, Double.class);
+            ReaderAverageDto readerAverageDto = new ReaderAverageDto(genre, averageDurationValue);
+
+            groupedResults
+                    .computeIfAbsent(yearValue, k -> new HashMap<>())
+                    .computeIfAbsent(monthValue, k -> new ArrayList<>())
+                    .add(readerAverageDto);
+        }
+
+        List<ReaderLendingsAvgPerMonthDto> readerLendingsAvgPerMonthDtos = new ArrayList<>();
+        for (Map.Entry<Integer, Map<Integer, List<ReaderAverageDto>>> yearEntry : groupedResults.entrySet()) {
+            int yearValue = yearEntry.getKey();
+            for (Map.Entry<Integer, List<ReaderAverageDto>> monthEntry : yearEntry.getValue().entrySet()) {
+                int monthValue = monthEntry.getKey();
+                List<ReaderAverageDto> values = monthEntry.getValue();
+                readerLendingsAvgPerMonthDtos.add(new GenreLendingsPerMonthDTO(yearValue, monthValue, values));
+            }
+        }
+
+
+        return null;
+    }*/
 }

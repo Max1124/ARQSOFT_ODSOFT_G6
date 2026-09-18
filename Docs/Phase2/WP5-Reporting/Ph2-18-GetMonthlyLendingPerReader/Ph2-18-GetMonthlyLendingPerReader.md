@@ -23,8 +23,10 @@ As Librarian I want to know the Monthly lending per reader of a certain period
 
 
 ### 1.3. Acceptance Criteria
-- AC
-- 
+- Interpreted AC: 
+  - The API will return, per reader:
+    - The lending count per month, divided by the number of months the reader has been registered 
+    - Ordered by date of reader registration
 ### 1.4. Found out Dependencies
 ### 1.5 Input and Output Data
 

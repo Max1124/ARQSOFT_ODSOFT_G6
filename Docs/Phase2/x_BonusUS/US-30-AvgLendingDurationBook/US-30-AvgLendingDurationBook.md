@@ -35,11 +35,11 @@ As Librarian I want to know the average lending duration per book
 ## 3. Design
 ### 3.1. Sequence Diagram (SD)
 
-<img src="US-30-GetAverageLendingDurationPerBook-SD.svg" alt="Sequence Diagram">
+<img src="US-30-AvgLendingDurationBook-SD.svg" alt="Sequence Diagram">
 
 ### 3.2. Class Diagram (CD)
 
-<img src="../WP4B-Lendings-CD.svg" alt="Class Diagram">
+<img src="/WP4B-Lendings-CD.svg" alt="Class Diagram">
 
 ## 4. Tests
 ## 5. Observations
