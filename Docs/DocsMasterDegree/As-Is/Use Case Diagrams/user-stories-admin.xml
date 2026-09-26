@@ -1,2 +1,48 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<mxfile host="app.diagrams.net" type="device"><diagram id="us-admin" name="Admin User Stories"><mxGraphModel dx="1400" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1260" pageHeight="280" math="0" shadow="0"><root><mxCell id="0"/><mxCell id="1" parent="0"/><mxCell id="lane-Login" value="Authentication (1)" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" vertex="1" parent="1"><mxGeometry x="180" y="40" width="1020" height="180" as="geometry"/></mxCell><mxCell id="US-L01" value="&lt;b&gt;US-L01&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to log in." style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" vertex="1" parent="lane-Login"><mxGeometry x="20" y="50" width="230" height="110" as="geometry"/></mxCell><mxCell id="actor" value="Admin" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=14;" vertex="1" parent="1"><mxGeometry x="60" y="90" width="40" height="80" as="geometry"/></mxCell><mxCell id="edge-lane-Login" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;" edge="1" parent="1" source="actor" target="lane-Login"><mxGeometry relative="1" as="geometry"/></mxCell></root></mxGraphModel></diagram></mxfile>
+<mxfile host="app.diagrams.net">
+  <diagram id="us-admin" name="Admin User Stories">
+    <mxGraphModel dx="1212" dy="661" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1260" pageHeight="670" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="lane-Login" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" value="Authentication (1)" vertex="1">
+          <mxGeometry height="210" width="1020" x="180" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="US-L01" parent="lane-Login" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-L01&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to log in." vertex="1">
+          <mxGeometry height="110" width="230" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="lane-Users" parent="1" style="swimlane;whiteSpace=wrap;html=1;startSize=30;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;fontSize=14;rounded=1;arcSize=4;" value="Users (5)" vertex="1">
+          <mxGeometry height="340" width="1020" x="180" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="US-U01" parent="lane-Users" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-U01&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to create a new user." vertex="1">
+          <mxGeometry height="110" width="230" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="US-U02" parent="lane-Users" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-U02&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to update an existing user." vertex="1">
+          <mxGeometry height="110" width="230" x="270" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="US-U03" parent="lane-Users" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-U03&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to delete a user." vertex="1">
+          <mxGeometry height="110" width="230" x="520" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="US-U04" parent="lane-Users" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-U04&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to get a user&#39;s information given their ID." vertex="1">
+          <mxGeometry height="110" width="230" x="770" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="US-U05" parent="lane-Users" style="shape=note;whiteSpace=wrap;html=1;backgroundOutline=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;spacingLeft=8;spacingRight=8;spacingTop=4;fontSize=12;" value="&lt;b&gt;US-U05&lt;/b&gt;&lt;br&gt;&lt;br&gt;As a &lt;b&gt;Admin&lt;/b&gt;, I want to search for users by username or full name." vertex="1">
+          <mxGeometry height="110" width="230" x="20" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="actor" parent="1" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fontStyle=1;fontSize=14;" value="Admin" vertex="1">
+          <mxGeometry height="80" width="40" x="60" y="295" as="geometry" />
+        </mxCell>
+        <mxCell id="edge-lane-Login" edge="1" parent="1" source="actor" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;" target="lane-Login">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="140" y="335" />
+              <mxPoint x="140" y="145" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="edge-lane-Users" edge="1" parent="1" source="actor" style="endArrow=none;html=1;edgeStyle=orthogonalEdgeStyle;" target="lane-Users">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
