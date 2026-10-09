@@ -20,6 +20,11 @@
 
 The sample is 13 active tests. It is not the whole suite. The average is the mean of the 13 test averages.
 
+JaCoCo measured the instruction coverage of the whole active suite at 13,3%. The figure is low: the domain packages are partly covered, while the API, the services and the bootstrapping stay near 0%.
+
+![JaCoCo instruction coverage of the as-is suite](Coverage.png)
+
+
 # 2. Measurements to quality of tests
 
 ### Evaluation
