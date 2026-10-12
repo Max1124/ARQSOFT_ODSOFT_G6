@@ -1,0 +1,10 @@
+classDiagram
+    class BibliographicSource {
+        <<interface>>
+        lookupByIsbn(isbn)
+    }
+    BibliographicService --> BibliographicSource : uses enabled collection
+    BibliographicService --> BibliographicMerge : combines results
+    BibliographicSource --> BibliographicData : returns
+    GoogleBooksAdapter ..|> BibliographicSource
+    OpenLibraryAdapter ..|> BibliographicSource

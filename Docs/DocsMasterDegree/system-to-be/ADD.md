@@ -2,6 +2,10 @@
 
 This file details the ADD process used to develop new functionalities.
 
+## Design iterations
+
+- [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; only its proposed design is detailed so far. Not yet implemented.
+
 ## Requirements
 Below are listed the non-functional and functional requirements
 
@@ -29,11 +33,18 @@ Below are listed the non-functional and functional requirements
 
 ### Functional requirements
 #### Bibliographic information
-- US1: As a Librarian, I want to create a book by providing only its ISBN, so that the system fills in the remaining bibliographic data retrieved from the configured external sources.
+- US1: As a Librarian, I want to create a book using its ISBN, so that the system retrieves and fills in the available bibliographic information from the configured external sources, reducing manual entry.
 - US2: As a Librarian, I want to search for a book's bibliographic information by ISBN or title in the external sources, before registering it in the library catalogue.
 - US3: As a Librarian, I want the system to combine the data returned by several external sources into a single book record when more than one source is configured, filling missing fields from whichever source provides them.
 - US4: As a Librarian, I want to be able to add more new bibliographic information sources.
 - US5: As an Administrator, I want to define at setup time which bibliographic information sources are enabled, without changing the source code.
+
+#### US1 acceptance criteria
+- AC1: The system fills in available bibliographic fields from the configured sources.
+- AC2: Existing catalogue authors and genre may be associated automatically only when the correspondence is unambiguous. Matching rules must be defined and tested; a name match alone is not assumed sufficient.
+- AC3: Missing required data or ambiguous associations are reported to the librarian for completion or confirmation. No incomplete book is saved.
+- AC4: Authors and genres absent from the catalogue are created only through an explicit librarian decision, not automatically during retrieval.
+- AC5: When metadata and catalogue associations are sufficient and unambiguous, registration requires no additional manual completion.
 
 #### Reader notifications
 - US6: As a Librarian, I want the Reader to be notified when a lending is about to reach its due date, through the notification channels enabled in the system.
