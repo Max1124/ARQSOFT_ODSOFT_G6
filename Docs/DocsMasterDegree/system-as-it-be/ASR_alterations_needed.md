@@ -5,7 +5,11 @@ The Library Management Service currently does not adequately support:
 2. Configurability
 3. Testability
 
-Below are occurrences of ASR noncompliance in the system as-is:
+This document is an as-is diagnosis, not the complete future ASR specification. See [to-be requirements and QAS](../system-to-be/ADD.md). A business rule is not itself a quality defect: its fixed parameters, coupling or difficulty of replacement may be.
+
+For lending, the faculty specification requires Standard and Adaptive policies, automatic per-reader selection on every new lending and renewal. Section 5 (external parameter configuration) is excluded for this two-person group; section 4 remains included pending faculty confirmation. The current active-lending limit relates to LP-S1/LP-A1; embedded rules motivate QAS3; direct clock access motivates QAS11. Line references below are historical and need rechecking as code evolves.
+
+Below are observations of architectural limitations in the system as-is:
 ## 1. Extensibility
 
 - In `LendingServiceImpl`:

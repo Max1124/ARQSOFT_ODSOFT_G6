@@ -24,9 +24,7 @@ Below are listed the non-functional and functional requirements
 #### Lending policies
 - The system must support different lending policies according to the complementary lending policy
   specification.
-- The system must support externally configurable lending policy parameters at setup time, without requiring
-  changes to the source code.
-- The current lending policy must be changeable at runtime.
+- The applicable lending policy must be selected automatically for each reader on every new lending or renewal request, according to the faculty selection rules.
 - The system must support addition of new lending policies with limited impact on existing functionality.
 
 ### Functional requirements
@@ -44,10 +42,38 @@ Below are listed the non-functional and functional requirements
 - US9: As an Administrator, I want to define at setup time which notification systems are enabled, without changing the source code.
 
 #### Lending policies
-- US10: As an Administrator, I want to configure the lending policy parameters (e.g., maximum lending duration, maximum simultaneous lendings, fine per day of delay) at setup time through external configuration, without changing the source code.
-- US11: As a Librarian, I want to change the active lending policy while the system is running, so that new lendings follow the new policy immediately.
-- US12: As a Librarian, I want to consult which lending policy is currently active and its parameters.
-- US13: As a Reader, I want to be able to lend a book only if I comply with the rules of the currently active lending policy, and be told which rule I violate otherwise.
+- US11: As a Reader, I want my applicable lending policy to be selected automatically from my history and current lending status on every new lending or renewal request.
+- US12 (group proposal): As a Librarian, I want to consult the policy applicable to a reader and its parameters. A consultation endpoint is additional scope, not a requirement for a global active policy.
+- US13: As a Reader, I want new lendings to follow the applicable Standard or Adaptive policy and receive a reason when rejected.
+- US14: As a Reader, I want to renew a lending only when the re-evaluated policy permits it.
+
+### Lending rules from the faculty specification
+Scope for this two-person group: section 5 (external setup-time parameter configuration) is excluded following the reported faculty instruction. Section 4 (automatic policy selection) remains included pending faculty confirmation. US10 and QAS7 are retired; other identifiers are retained to preserve references. Numeric conditions in sections 2-4 still apply, without requiring external configuration or startup validation.
+- LP-S1 (2.1): Standard permits at most `MaxActiveLendings > 0` active lendings.
+- LP-S2 (2.2): Standard lending duration is `LendingPeriod > 0` days.
+- LP-S3 (2.3): Standard permits at most `MaxRenewals >= 0` renewals, each for `RenewalPeriod > 0` days.
+- LP-S4 (2.4): A reader with any overdue lending cannot start a new Standard lending.
+- LP-S5 (2.5): An overdue lending cannot be renewed under Standard.
+- LP-A1 (3.1): Adaptive permits at most `MaxActiveLendings > 0` active lendings.
+- LP-A2 (3.2-3.4): Below `FirstThreshold`, use `LongPeriod`; from `FirstThreshold` inclusive to `SecondThreshold` exclusive, use `StandardPeriod`; at or above `SecondThreshold`, use `ShortPeriod`.
+- LP-A3 (3.5): Validate `0 < FirstThreshold < SecondThreshold < MaxActiveLendings` and `LongPeriod > StandardPeriod > ShortPeriod > 0`.
+- LP-A4 (3.6): Adaptive renewal requires the resulting lending to continue satisfying the applicable policy conditions; the exact calculation needs clarification.
+- LP-A5 (3.7): A reader with any overdue lending cannot start a new Adaptive lending.
+- LP-SEL1 (4.1-4.2): Standard is the default. Adaptive applies only when, in the previous `HistoryPeriod > 0` months, the reader completed at least `MinCompletedLendings > 0`, returned at least `MinOnTimeRatio` (0-100%) of those lendings on time, and has no currently overdue lending. All conditions must hold.
+- LP-SEL2 (4.3): Re-evaluate selection for each reader on every new lending and renewal request.
+
+### Scope and classification notes
+The existing non-functional section mixes required functional capabilities with quality requirements. Retrieving external data and sending notifications are functional; limited impact of additions is extensibility; setup-time selection is configurability. User stories refine these capabilities.
+
+Search by title (US2), merge behaviour (US3), specific notification events (US6/US7), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
+
+### Pending questions for the faculty
+1. Does Adaptive duration use the active-lending count before or after adding the requested lending?
+2. What duration does an Adaptive renewal add, from which date, and is there a renewal-count limit?
+3. If the selected policy changes on renewal, how do its rules interact with original terms and previous renewals?
+4. Which date determines inclusion in the completed-lending history window, and are boundary dates inclusive?
+
+These questions remain open; affected calculations and acceptance tests must not assume answers.
 
 
 ## Quality Attribute Scenarios
@@ -86,10 +112,10 @@ The Library Management service does not adequately support **Extensibility**, **
 |---|---|
 | Stimulus | A new lending policy defined in the complementary lending policy specification must be supported. |
 | Stimulus source | Developer, following a decision from library management. |
-| Environment | Design and development time, with other lending policies already implemented and one of them active. |
+| Environment | Design and development time, with Standard and Adaptive already implemented and selected separately for each reader. |
 | Artifact | Lending management module: lending policy interface, policy implementations, `LendingServiceImpl`. |
 | Response | The developer creates a new policy implementation. `LendingServiceImpl` validates new lendings through the policy interface, so it does not need to change. |
-| Response measure | One new policy class plus its parameter definitions. No changes to `LendingServiceImpl`, `Lending`, `LendingController` or the other policies. 100% of the existing tests still pass. Effort is at most 1 person-day. |
+| Response measure | Add the new policy, parameter definitions and tests; extend selection registration/rules where needed. Existing policies, `LendingServiceImpl` and `LendingController` remain unchanged. 100% of existing tests still pass. The 1 person-day target is a group estimate. |
 
 ### Configurability
 
@@ -130,29 +156,19 @@ The Library Management service does not adequately support **Extensibility**, **
 | Response | The system validates that every chosen channel is enabled and stores the preferences. Later notifications for that Reader go only through the chosen channels. A choice that includes a disabled channel is rejected with an error message naming that channel. |
 | Response measure | 0 code changes and 0 restarts. The new preferences apply to the next notification sent to that Reader. 100% of choices that include a disabled channel are rejected. Other Readers' preferences are unaffected. |
 
-#### QAS7 – Configuring lending policy parameters at setup
-**Related requirements:** US10, NFR "externally configurable lending policy parameters at setup time"
+#### QAS8 – Automatic per-reader policy selection at runtime
+**Related requirements:** US11, US14, LP-SEL1, LP-SEL2
+
+This scenario specifies runtime selection behaviour, rather than setup-time reconfiguration.
 
 | Element | Statement |
 |---|---|
-| Stimulus | The Administrator wants to change the maximum lending duration from 15 to 21 days and the fine per day of delay. |
-| Stimulus source | Administrator. |
-| Environment | Setup / deployment time. |
-| Artifact | External configuration and the lending policy parameter binding. |
-| Response | At startup, the system loads the new values. New lendings use the new duration, and fines are calculated with the new value. Invalid values are rejected at startup with a clear error message. |
-| Response measure | 0 lines of source code changed and no recompilation. Takes effect after one application restart. 100% of invalid parameter values are detected at startup. |
-
-#### QAS8 – Changing the active lending policy at runtime
-**Related requirements:** US11, US12, NFR "the current lending policy must be changeable at runtime"
-
-| Element | Statement |
-|---|---|
-| Stimulus | The Librarian switches the active lending policy to a different one. |
-| Stimulus source | Librarian, through the REST API. |
+| Stimulus | A reader requests a new lending or renewal. |
+| Stimulus source | Reader, through the lending REST API. |
 | Environment | Runtime, under normal operation, with active lendings and concurrent requests. |
-| Artifact | Lending management module: active policy holder and the policy management endpoint. |
-| Response | The system switches the active policy without a restart. Lending requests created after the switch are validated against the new policy. Existing lendings keep the terms they were created with. The currently active policy can be consulted (US12). |
-| Response measure | 0 restarts and 0 downtime. The new policy applies to the next lending request, within 1 second. 0 existing lendings are changed. |
+| Artifact | Lending service, policy selector and reader-history access. |
+| Response | Evaluate all Adaptive eligibility conditions for this reader. Select Adaptive only when all hold; otherwise select Standard. Validate the requested operation with that policy. |
+| Response measure | Every new lending and renewal re-evaluates selection, without restart or manual switching. Tests exercise each condition and readers with different eligibility. Selection alone does not modify existing lendings; renewal effects require clarification. |
 
 ### Testability
 
@@ -181,19 +197,21 @@ The Library Management service does not adequately support **Extensibility**, **
 | Response measure | 0 real messages sent during tests. At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
 
 #### QAS11 – Testing lending policies independently
-**Related requirements:** US10, US11, US13
+**Related requirements:** US11, US13, US14
 
 | Element | Statement |
 |---|---|
-| Stimulus | A developer needs to verify each lending policy's rules, its parameters and runtime policy switching. |
+| Stimulus | A developer needs to verify both policies, parameter constraints, renewals and automatic per-reader selection. |
 | Stimulus source | Developer / CI pipeline. |
 | Environment | Development and continuous integration. |
-| Artifact | Lending policy implementations, parameter configuration and `LendingServiceImpl`. |
+| Artifact | Lending policy implementations, policy selector and `LendingServiceImpl`. |
 | Response | Each policy is tested as a standalone unit with injected parameters and a controllable clock, without starting Spring or the database. `LendingServiceImpl` is tested with a mocked policy. |
 | Response measure | Every policy rule has at least one passing and one failing test case. At least 80% branch coverage on policy classes. Policy unit tests run in under 5 seconds in total. |
 
 
 ## Prioritization
+
+This ranking is provisional. US14 and lending QAS need inclusion in the next prioritization review. Performance and Releasability require explicit scenarios before being used as architectural drivers. The scoring formula also remains to be defined.
 
 The table below shows what we determined to be the priority of features to implement according to the ADD process:
 
@@ -210,7 +228,6 @@ The table below shows what we determined to be the priority of features to imple
 |US7|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US8|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US9|<span style="color:yellow">Medium</span>|<span style="color:red">High</span>|<span style="color:orange">3</span>|
-|US10|<span style="color:yellow">Medium</span>|<span style="color:red">High</span>|<span style="color:orange">3</span>|
 |US11|<span style="color:red">High</span>|<span style="color:red">High</span>|<span style="color:red">4</span>|
 |US12|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US13|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
