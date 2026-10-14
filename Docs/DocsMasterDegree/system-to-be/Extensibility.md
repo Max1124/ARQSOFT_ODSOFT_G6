@@ -147,6 +147,16 @@ Names are proposed, not existing classes. Suggested placement: contract/data/coo
 
 **Pending decisions:** matching rules and REST responses; no-match versus provider failure; partial/all-provider failure behaviour; source precedence and conflicting/list values; librarian overrides. Provider schemas/endpoints must be checked against official documentation when implementing. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
 
+### Sequence sketch — Notification methods information
+
+![Notification methods sequence](Images/NotificationSequence.png)
+
+### Structural sketch — Notification methods
+
+![Notification methods structure](Images/NotificationStructure.png)
+
+**Pending decisions:** more notification methods to add; notification method failure behavior.
+
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
 ### Design Kanban
@@ -155,7 +165,7 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
-| Notification extensibility — QAS2 | Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
+|  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
 | Lending policy extensibility — QAS3 | | |
 
 Related concerns: setup-time source selection (QAS4) will be detailed under configurability; test isolation (QAS9) under testability. Partial-data merge (US3) and ISBN-assisted registration (US1) remain functional decisions relevant to this design, not separate extensibility drivers in this board. CON-BIB-3 records the agreed librarian-controlled creation of missing authors/genres; agreeing that constraint does not demonstrate that QAS1 is satisfied.

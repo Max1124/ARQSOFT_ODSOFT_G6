@@ -114,7 +114,7 @@ The Library Management service does not adequately support **Extensibility**, **
 | Environment | Design and development time, with email, SMS and webhook channels already in production. |
 | Artifact | Reader notification module: notification channel interface and channel implementations. |
 | Response | The developer implements the channel interface in a new class. The notification dispatcher discovers it and sends through it together with the other enabled channels. Readers can then select it as one of their channels. |
-| Response measure | One new class plus its configuration entry. No changes to existing channels, the dispatcher, or the lending module. 100% of the existing tests still pass. Effort is at most 1 person-day. |
+| Response measure | One new interface plus specific implementations for at least SMS and e-mail. No changes to existing channels, the dispatcher, or the lending module. 100% of the existing tests still pass. Effort is at most 2 person-day. |
 
 #### QAS3 – Adding a new lending policy
 **Related requirements:** US13, NFR "addition of new lending policies with limited impact"

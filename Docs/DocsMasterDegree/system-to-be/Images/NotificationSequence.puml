@@ -1,0 +1,55 @@
+@startuml
+actor Reader
+participant "LendingController" as API
+participant "LendingServiceImpl" as Lending
+participant "LendingRepository" as LRepo
+participant "SpringDataReaderRepositoryImpl" as RRepo
+participant "SMSNotificationService" as SMS
+participant "EmailNotificationService" as Email
+
+Reader -> API : Lend a book
+API -> Lending : create(lending request)
+Lending -> LRepo : save(lending)
+LRepo --> Lending : Lending with due date
+Lending --> API : Lending created
+API --> Reader : Lending confirmation and return date
+
+... Time passes until the lending nears its due date or becomes overdue ...
+
+note over Lending : Periodic check, triggered by a scheduler (see class list)
+Lending -> LRepo : Fetch active lendings
+LRepo --> Lending : Active lendings
+Lending -> Lending : Evaluate due date of each lending
+
+alt Lending is reaching its due date (US6)
+    Lending -> RRepo : Get notification channels selected by the reader
+    RRepo --> Lending : Selected channels (ReaderDetails)
+    opt SMS selected
+        Lending -> SMS : send(reader, due date warning)
+        SMS -> RRepo : Get reader contact (PhoneNumber)
+        RRepo --> SMS : PhoneNumber
+        SMS --> Reader : Sends notification via SMS
+    end
+    opt Email selected
+        Lending -> Email : send(reader, due date warning)
+        Email -> RRepo : Get reader contact (EmailAddress)
+        RRepo --> Email : EmailAddress
+        Email --> Reader : Sends notification via e-mail
+    end
+else Lending is overdue and a fine will be applied (US7)
+    Lending -> RRepo : Get notification channels selected by the reader
+    RRepo --> Lending : Selected channels (ReaderDetails)
+    opt SMS selected
+        Lending -> SMS : send(reader, overdue and fine warning)
+        SMS -> RRepo : Get reader contact (PhoneNumber)
+        RRepo --> SMS : PhoneNumber
+        SMS --> Reader : Sends notification via SMS
+    end
+    opt Email selected
+        Lending -> Email : send(reader, overdue and fine warning)
+        Email -> RRepo : Get reader contact (EmailAddress)
+        RRepo --> Email : EmailAddress
+        Email --> Reader : Sends notification via e-mail
+    end
+end
+@enduml
