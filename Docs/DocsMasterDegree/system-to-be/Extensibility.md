@@ -28,13 +28,19 @@ Retain the existing Java/Spring REST backend. External lending parameter configu
 | Iteration 2 | Support new notification channels with limited impact on existing functionality. | QAS2 — Extensibility; US6, US7. Related: US9, QAS5, QAS10 | Common channel interface, dispatcher, setup-time binding, dependency injection |
 | Iteration 3 | Add lending policies with limited impact on the lending service. | QAS3 — Extensibility; US13, US14. Related: US11, QAS8, QAS11 | Policy interface, Strategy, per-reader selector, controlled clock |
 
-The roadmap is tentative: it orders architectural concerns, not coding stages. Design concepts are candidates to evaluate in each iteration. Only iteration 1 is developed below; later iterations can change as risks and dependencies become clearer.
+The roadmap is tentative: it orders architectural concerns, not coding stages. Design concepts are candidates to evaluate in each iteration. Iterations 1 and 3 are developed below; iteration 2 is only sketched in Step 6. Later iterations can change as risks and dependencies become clearer.
 
 Each iteration focuses on the extension point of one functional area. Configuration and testability are related concerns within that iteration, not separate bibliographic iterations. Their detailed documentation can be referenced from the corresponding attribute documents when created.
 
 ### Iteration 1 — Bibliographic information
 
 Current iteration: Bibliographic information. Primary driver: QAS1. Related drivers: QAS4 and QAS9.
+
+### Iteration 3 — Lending policies
+
+Goal: add lending policies with limited impact on the lending service, while the applicable policy is chosen per reader at runtime. Primary driver: QAS3. Related drivers: QAS8 (runtime per-reader selection) and QAS11 (policy testability). Related requirements: US11, US13, US14 and rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](ADD.md).
+
+Selection rationale: lending rules are the only extension point that already exists as hardcoded business logic, so every new policy currently forces changes in `LendingServiceImpl`. QAS8 is included because selection decides which policy is applied; designing the policy contract without it would have to be revisited. External parameter configuration (faculty section 5) is excluded for this group, so configurability is not a driver of this iteration.
 
 ## Step 3 — Choose one or more elements of the system to decompose
 
@@ -46,6 +52,22 @@ Current iteration: Bibliographic information. Primary driver: QAS1. Related driv
 - **Catalogue registration boundary:** associate metadata with valid internal authors/genre and preserve domain validation.
 
 As-is basis: `BookServiceImpl.create` resolves supplied author identifiers and an existing genre before constructing `Book`. There is no bibliographic provider integration in the current book module. Initial integration may change this code; limited impact applies to subsequent source additions.
+
+### Elements to decompose — Iteration 3
+
+- **Lending application service (`LendingServiceImpl`):** remove policy rules from the service and delegate the decision for new lendings and renewals.
+- **Lending rules:** separate each policy's rules and parameters (Standard, Adaptive) behind a common contract.
+- **Policy selection:** isolate the per-reader selection rules (LP-SEL1) from the policies themselves, and evaluate them on every request (LP-SEL2).
+- **Reader lending history:** provide the facts that rules need (active lendings, overdue lendings, completed and on-time lendings in a period) without exposing repositories to the rules.
+- **Time source:** make "today" an explicit dependency so date-based rules can be tested deterministically (QAS11).
+
+As-is basis:
+
+- `LendingServiceImpl.create` (lines 59–83) iterates the reader's outstanding lendings, rejects when one is overdue (line 65) and when three are outstanding (line 70, hardcoded), then builds `Lending` with `lendingDurationInDays` injected with `@Value` (lines 32–33, value 15 in `config/library.properties`).
+- `Lending` computes `startDate` and `limitDate` with `LocalDate.now()` (lines 140–141); overdue calculation also uses `LocalDate.now()` (line 183).
+- There is no renewal operation and no notion of policy.
+
+The first introduction of the policy contract changes `LendingServiceImpl` once; limited impact (QAS3) applies to subsequent policy additions.
 
 ## Step 4 — Choose one or more design concepts that satisfy the inputs of the iteration
 
@@ -87,6 +109,37 @@ The following concepts are selected as design proposals from the faculty's Tacti
 These choices are elaborated as responsibilities and decisions in Step 5 and in the technical memo.
 
 **Proposed choice:** retain the layered backend and use a local source port with provider adapters. Direct provider calls in `BookServiceImpl` are simpler initially but force provider-specific changes into business logic. The selected approach adds types/contracts but isolates variation. See the memo for the full rationale.
+
+#### Selected tactics — Iteration 3
+
+Modifiability tactics (faculty ADD material, Tactics (iii), and the catalogue above):
+
+- **Abstract Common Services / Use of Interfaces:** one `LendingPolicy` contract evaluates new lendings and renewals; Standard, Adaptive and future policies implement it (QAS3).
+- **Encapsulate:** each policy hides its own parameters and rules (LP-S*, LP-A*); the service never reads `MaxActiveLendings`, thresholds or periods (QAS3).
+- **Use an Intermediary:** a selector stands between the service and the policies, so the service never names a concrete policy (QAS3, QAS8).
+- **Restrict Dependencies:** the service depends only on the contract and the selector; policies and selection rules depend on a read-only history snapshot, not on repositories, HTTP or Spring (QAS3, QAS11).
+- **Separation of Concerns / Increase Semantic Coherence:** selection rules (who gets which policy) are separate from policy rules (what a policy allows); history collection is separate from evaluation (QAS3, QAS8, QAS11).
+- **Defer Binding:** the available policies and selection rules are composed at setup; the policy applied to a request is bound at runtime for that reader (LP-SEL2). This is per-request choice among installed policies, not loading new code at runtime.
+
+#### Other possible tactics — Iteration 3
+
+- **Flexibility — Dynamic Binding** (Tactics (iii)): runtime, per-request policy choice from the reader's current history (QAS8).
+- **Flexibility — Use of Abstractions** (Tactics (iii)): the same `LendingPolicy` abstraction already selected; not an additional mechanism.
+- **Flexibility — Configuration-Driven Behavior** (Tactics (iii)): **not selected**. External parameter configuration is excluded for this group. Parameters are kept as validated, immutable objects defined in code, which keeps this as an evolution point (Step 1, *Variation vs. Evolution Points*).
+- **Testability — Dependency Injection, Isolation, Mocking** (Tactics (vi)): policies receive parameters and a history snapshot, so they are tested without Spring or a database; the service is tested with a mocked selector/policy; "today" comes from an injected clock (QAS11).
+
+Pattern: **Strategy** for policies, with an ordered list of selection rules and a default policy.
+
+#### Alternatives — Iteration 3
+
+| Alternative | Description | + | − |
+|---|---|---|---|
+| A1 — Conditional logic in the service | `LendingServiceImpl` checks eligibility and branches on policy type. | Simple; few types | Every new policy or rule changes the service; hard to test rules in isolation; fails QAS3 |
+| A2 — Strategy, self-selecting policies | Each policy implements the contract and also decides if it applies to a reader (with a priority). | Fewer types; one class per policy | Mixes LP-SEL rules into policies; adding a policy may require changing others' priorities; Standard "default" becomes implicit |
+| A3 — Strategy + separate selection rules + selector | Policies implement the contract; ordered selection rules map reader history to a policy; Standard is the default. | Localizes policy and selection changes; each part tested alone; supports QAS3, QAS8, QAS11 | More types; ordering of rules must be explicit |
+| A4 — External rules engine / database rules | Rules described as data and interpreted at runtime. | Changes without redeploy | Over-engineering for two policies (Step 1 over-engineering alert); configuration is out of scope; harder to test |
+
+**Proposed choice:** A3. It is the only alternative where a new policy (and, when needed, its selection rule) is added without changing the service or existing policies, and where selection and policy rules are testable independently. The cost is more types and an explicit rule order. The full rationale is recorded in the lending policy technical memo (Step 5).
 
 ## Step 5 — Instantiate architectural elements, allocate responsibilities, and define interfaces
 
