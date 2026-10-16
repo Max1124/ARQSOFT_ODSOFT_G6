@@ -98,6 +98,10 @@ These choices are elaborated as responsibilities and decisions in Step 5 and in 
 | EXT-BIB-02 | Automatically associate only unambiguous existing authors/genre; request librarian completion when necessary. Never create these records automatically. | Reduce manual entry while preserving catalogue identity and the agreed librarian-controlled creation of missing records (US1). |
 | EXT-BIB-03 | Translate external responses to partial `BibliographicData`; separate merge logic. | Different models and missing fields remain outside the catalogue domain; merge can be tested without HTTP (US3/QAS9). |
 | EXT-BIB-04 | Compose the ordered enabled source collection at setup. | One or several installed sources can be selected without embedding provider names in the coordinator (QAS4). Detailed configuration remains to be refined within iteration 1 and documented under configurability. |
+|NOT-MTD-01| `NotificationService` defines general behavior of a notification mechanism; specific implementations of the interface detail the workings of specific mechanisms. | Clients depend on one notification contract rather than on specific mechanisms, so mechanisms can be added or replaced without changing the code that sends notifications (QAS2). |
+|NOT-MTD-02| `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery. | Each mechanism's protocol and delivery details stay in its own class, so a change to one mechanism does not affect the others; covers the three required mechanisms (QAS2). |
+|NOT-MTD-03| `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`. | Lending business logic contains no mechanism-specific calls or conditions (QAS2); it can be tested with a test double of `NotificationService` instead of real delivery (QAS10). |
+|NOT-MTD-04| Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number from `ReaderDetails` and the email from the `username` of its `Reader`. | Notification mechanisms do not depend on the persistence technology, so the repository can be replaced by a test double (QAS10); contact data is read from the existing reader model instead of being duplicated. |
 
 ### Constraints
 
@@ -107,6 +111,11 @@ These choices are elaborated as responsibilities and decisions in Step 5 and in 
 | CON-BIB-2 | Support Google Books, Open Library, different models and partial data. | Faculty section 1.3.3.1 |
 | CON-BIB-3 | Create missing catalogue authors/genres only by explicit librarian decision. | Group decision |
 | CON-BIB-4 | Keep provider DTOs/HTTP dependencies outside the domain. | Proposed architectural boundary supporting QAS1/QAS9 |
+| CON-NOT-1 | Keep the existing backend. | Project context and current code |
+| CON-NOT-2 | Support email, SMS and webhook; notifications may use more than one method at a time. | ADD.md, Reader notifications requirements |
+| CON-NOT-3 | Allow the notification systems to be used to be chosen at setup time. | ADD.md, Reader notifications requirements |
+| CON-NOT-4 | Use the reader contact data already in the model: phone number in `ReaderDetails`, email as the `username` of `Reader`. | Current code |
+| CON-NOT-5 | Keep mechanism-specific dependencies (SMS, email and webhook clients) outside `LendingServiceImpl` and the domain. | Proposed architectural boundary supporting QAS2 |
 
 ### Responsibility assignment rationale
 
@@ -119,6 +128,12 @@ These choices are elaborated as responsibilities and decisions in Step 5 and in 
 | `BibliographicMerge` | Combine normalized results without HTTP or persistence. | Isolated deterministic logic | US3, QAS9                 |
 | Setup composition | Supply ordered enabled source implementations. | Spring constructor injection; detailed binding deferred | QAS4                      |
 | Book registration | Resolve valid catalogue associations, validate and save. | Existing domain/repository boundaries | US1, CON-BIB-1, CON-BIB-3 |
+| `NotificationService` | Define the general behaviour of a notification mechanism. | Common notification contract | QAS2 |
+| `SMSNotificationService` | Deliver notifications by SMS, using the reader's phone number from `ReaderDetails`. | Implementation of `NotificationService` | QAS2, CON-NOT-2, CON-NOT-4 |
+| `EmailNotificationService` | Deliver notifications by email, using the `username` of the reader's `Reader`. | Implementation of `NotificationService` | QAS2, CON-NOT-2, CON-NOT-4 |
+| `WebhookNotificationService` | Deliver notifications by webhook. Source of the webhook target pending. | Implementation of `NotificationService` | QAS2, CON-NOT-2 |
+| `LendingServiceImpl` | Trigger notifications through `NotificationService` only, without mechanism-specific calls. | Existing application service | QAS2, CON-NOT-1, CON-NOT-5 |
+| `ReaderRepository` | Provide reader contact data to the notification implementations. | Existing repository interface | CON-NOT-4 |
 
 Names are proposed, not existing classes. Suggested placement: contract/data/coordinator in `bookmanagement.services` (optionally a bibliography subpackage), adapters/provider DTOs in `bookmanagement.infrastructure.bibliography`.
 
@@ -130,10 +145,12 @@ Names are proposed, not existing classes. Suggested placement: contract/data/coo
 | Coordinator | ISBN and injected sources | Combined data and source outcomes; no automatic author/genre creation |
 | Merge | Ordered normalized successful results | Combined data/provenance; precedence/conflict rules pending |
 | Registration | Complete required metadata and resolved catalogue associations | Valid saved `Book`, or clear validation response without saving an incomplete book |
-
+| Notification Mehtod | Notification methods a Reader has elected to use | Reader must have selected at least one notification method and have valid contact info petaining to it |
 ### Technical Memo
 
 [Extensibility — Bibliographic sources](Technical%20Memos/Extensibility/BibliographicSources.md)
+
+[Extensibility — Notification Methods](Technical%20Memos/Extensibility/Notifications.md)
 
 ## Step 6 — Sketch views and record decisions
 

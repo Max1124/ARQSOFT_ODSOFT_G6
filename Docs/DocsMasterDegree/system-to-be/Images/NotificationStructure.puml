@@ -1,0 +1,34 @@
+@startuml
+interface NotificationService
+class SMSNotificationService
+class EmailNotificationService
+class WebhookNotificationService
+
+class LendingServiceImpl
+class LendingRepository
+
+interface ReaderRepository
+interface SpringDataReaderRepositoryImpl
+
+class ReaderDetails {
+  PhoneNumber phoneNumber
+}
+class Reader {
+  String username
+}
+
+SMSNotificationService ..|> NotificationService
+EmailNotificationService ..|> NotificationService
+WebhookNotificationService ..|> NotificationService
+SpringDataReaderRepositoryImpl --|> ReaderRepository
+
+LendingServiceImpl --> NotificationService : calls
+LendingServiceImpl --> LendingRepository : uses data from
+LendingServiceImpl --> ReaderRepository : uses data from
+
+SMSNotificationService --> ReaderRepository : uses data from
+EmailNotificationService --> ReaderRepository : uses data from
+
+ReaderRepository --> ReaderDetails : stores
+ReaderDetails --> Reader
+@enduml

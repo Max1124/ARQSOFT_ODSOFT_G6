@@ -33,14 +33,13 @@ Supporting concepts selected in Step 4: Adapter and Data Transformation (interop
 
 ## Solution
 
-EXT-BIB-01 (proposed): `BibliographicSource` defines ISBN lookup; Google/Open Library adapters normalize responses into `BibliographicData`; `BibliographicService` coordinates the selected sources; isolated merge logic combines results. Source outcomes distinguish no match from communication failure.
+NOT-MTD-01 (proposed): `NotificationService` defines general behavior of a notification mechanism; Specific implementations of the interface will detail the workings of specific mechanisms;
 
-EXT-BIB-02 (agreed with the group): associate existing authors/genre automatically only when matching is unambiguous under defined rules. The librarian completes missing/ambiguous data and explicitly creates missing catalogue records when appropriate. Retrieval itself creates no authors/genres.
+NOT-MTD-02 (proposed): `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery;
 
-EXT-BIB-03 (proposed): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Source precedence, conflicts and list handling remain pending.
+NOT-MTD-03 (proposed): `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`;
 
-EXT-BIB-04 (proposed): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; detailed configuration remains to be refined.
-
+NOT-MTD-04 (proposed): Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number from `ReaderDetails` and the email from the `username` of its `Reader`;
 ## Motivation and trade-offs
 
 New notification methods can be implemented can be implemented with the same structure as previous ones while retaining their specific mechanisms. The cost is a specific implementation of each notification method.
