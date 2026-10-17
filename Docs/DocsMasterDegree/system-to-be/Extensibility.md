@@ -38,7 +38,7 @@ Current iteration: Bibliographic information. Primary driver: QAS1. Related driv
 
 ### Iteration 3 — Lending policies
 
-Goal: add lending policies with limited impact on the lending service, while the applicable policy is chosen per reader at runtime. Primary driver: QAS3. Related drivers: QAS8 (runtime per-reader selection) and QAS11 (policy testability). Related requirements: US11, US13, US14 and rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](ADD.md).
+Goal: add lending policies with limited impact on the lending service, while the applicable policy is chosen per reader at runtime. Primary driver: QAS3. Related drivers: QAS8 (runtime per-reader selection) and QAS11 (policy testability). Related requirements: US11, US13, US14 and rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](ADD.md), from *ARQSOFT 2026-2027 Lending Policies Specification v1.0* sections 2–4.
 
 Selection rationale: lending rules are the only extension point that already exists as hardcoded business logic, so every new policy currently forces changes in `LendingServiceImpl`. QAS8 is included because selection decides which policy is applied; designing the policy contract without it would have to be revisited. External parameter configuration (faculty section 5) is excluded for this group, so configurability is not a driver of this iteration.
 
@@ -279,7 +279,7 @@ On every new lending or renewal, `LendingServiceImpl` builds the reader's histor
 
 A new policy implements `LendingPolicy` with its own parameters; when it needs its own eligibility condition, a new `PolicySelectionRule` is added and both are registered at setup (EXT-LP-01 to EXT-LP-03).
 
-**Pending decisions:** answers to the open faculty questions (Adaptive count before or after the requested lending; Adaptive renewal duration and limit; renewal when the selected policy changes; history window dates); renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
+**Pending decisions:** answers to the open faculty questions (Adaptive count before or after the requested lending; Adaptive renewal duration and limit; renewal when the selected policy changes; history window dates; overdue renewal under Adaptive); renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
@@ -297,7 +297,7 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 - **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). QAS3 is not yet verified.
 - **Selection (QAS8):** the selector runs on every new lending and renewal and only chooses a policy; it does not modify existing lendings. Details are in [Configurability.md](Configurability.md) (CFG-LP-01 to CFG-LP-04).
 - **Trade-off:** more types (contract, two policies, parameter objects, decision, selector, rules, history snapshot and provider) and an explicit rule order. If a future policy needs a fact the history snapshot does not provide, the snapshot and its provider change.
-- **Risks:** the four open faculty questions affect Adaptive and renewal calculations, not the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
+- **Risks:** the five open faculty questions affect Adaptive and renewal calculations, not the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
 - **Extension experiment:** add a fake third policy and selection rule without changing the service, selector or existing policies. Record changed files (expected: new classes, setup registration and new tests only) and regression results.
 - **Representative tests (QAS11):** one passing and one failing case per LP rule with a fixed `Clock` and no Spring or database; LP-SEL1 conditions and boundaries for the selector; `LendingServiceImpl` with a mocked selector and policy. Use Arrange → Act → Assert. Test design is detailed in [Testability.md](Testability.md).
 - **Remaining work:** obtain faculty answers, model renewal on `Lending`, define REST rejection responses, then implement with tests.

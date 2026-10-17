@@ -85,6 +85,7 @@ Search by title (US2), merge behaviour (US3), specific notification events (US6/
 2. What duration does an Adaptive renewal add, from which date, and is there a renewal-count limit?
 3. If the selected policy changes on renewal, how do its rules interact with original terms and previous renewals?
 4. Which date determines inclusion in the completed-lending history window, and are boundary dates inclusive?
+5. Can an overdue lending be renewed under Adaptive? Standard forbids it explicitly (specification 2.5); Adaptive only states that the resulting lending must continue to satisfy the policy conditions (3.6).
 
 These questions remain open; affected calculations and acceptance tests must not assume answers.
 

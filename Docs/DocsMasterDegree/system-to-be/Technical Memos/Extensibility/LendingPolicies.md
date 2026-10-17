@@ -2,7 +2,7 @@
 
 Status: proposed architecture; not implemented or verified.
 
-Related iteration: [Extensibility, iteration 3](../../Extensibility.md). Primary driver: QAS3. Related drivers: QAS8, QAS11. Related requirements: US11, US13, US14 and lending rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](../../ADD.md). Faculty basis: Project 1 section 1.3.3.3 and the *Technical Memo* examples in *Something about Attribute-Driven Design 0.9* (Step 5).
+Related iteration: [Extensibility, iteration 3](../../Extensibility.md). Primary driver: QAS3. Related drivers: QAS8, QAS11. Related requirements: US11, US13, US14 and lending rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](../../ADD.md). Faculty basis: Project 1 section 1.3.3.3, *ARQSOFT 2026-2027 Lending Policies Specification v1.0* (sections 2–4; section 5 excluded for this group) and the *Technical Memo* examples in *Something about Attribute-Driven Design 0.9* (Step 5).
 
 ## Issue
 
@@ -22,7 +22,7 @@ Adopt the following tactics: Abstract Common Services, Encapsulate, Use an Inter
 - Selection depends on the reader's history (`HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`, no overdue lending) and must be re-evaluated on every new lending and renewal (LP-SEL1, LP-SEL2).
 - Rules depend on the current date (overdue lendings, history window, due dates), so tests need a controllable time source (QAS11).
 - External parameter configuration (faculty section 5) is excluded for this group. Parameters still have validity constraints (positive values, LP-A3 ordering).
-- Four open faculty questions affect calculations: Adaptive count before or after the requested lending; Adaptive renewal duration and limit; interaction when the selected policy changes on renewal; history window dates and boundaries.
+- Five open faculty questions affect calculations: Adaptive count before or after the requested lending; Adaptive renewal duration and limit; interaction when the selected policy changes on renewal; history window dates and boundaries; whether an overdue lending can be renewed under Adaptive.
 - Preserve the existing layered Java/Spring REST backend and the `Lending` invariants.
 
 ## Solution
@@ -53,7 +53,7 @@ The selected alternative separates what a policy allows from who gets it. It is 
 
 ## Pending issues
 
-- Answers to the four open faculty questions in [ADD.md](../../ADD.md); the contract does not depend on them, but the Adaptive and renewal calculations do.
+- Answers to the five open faculty questions in [ADD.md](../../ADD.md); the contract does not depend on them, but the Adaptive and renewal calculations do.
 - Renewal model on `Lending`: renewal count, and whether to record the policy applied when the lending was created.
 - Rule order when more than one non-default rule matches.
 - REST response format for rejection reasons.
