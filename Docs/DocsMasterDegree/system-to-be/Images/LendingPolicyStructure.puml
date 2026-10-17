@@ -1,0 +1,42 @@
+@startuml
+!pragma layout smetana
+skinparam shadowing false
+skinparam backgroundColor white
+title Lending policy extension point
+class LendingServiceImpl
+class LendingPolicySelector {
+  select(history)
+}
+interface PolicySelectionRule {
+  appliesTo(history)
+  policy()
+}
+class AdaptiveEligibilityRule
+interface LendingPolicy {
+  evaluateNewLending(history)
+  evaluateRenewal(lending, history)
+}
+class StandardLendingPolicy
+class AdaptiveLendingPolicy
+class StandardPolicyParameters
+class AdaptivePolicyParameters
+class PolicyDecision
+class ReaderLendingHistory
+class ReaderLendingHistoryProvider
+interface LendingRepository
+class Clock
+LendingServiceImpl --> ReaderLendingHistoryProvider : builds history
+LendingServiceImpl --> LendingPolicySelector : asks for policy
+LendingServiceImpl --> LendingPolicy : applies decision
+LendingPolicySelector --> PolicySelectionRule : ordered rules
+LendingPolicySelector --> LendingPolicy : default Standard
+AdaptiveEligibilityRule ..|> PolicySelectionRule
+StandardLendingPolicy ..|> LendingPolicy
+AdaptiveLendingPolicy ..|> LendingPolicy
+StandardLendingPolicy --> StandardPolicyParameters
+AdaptiveLendingPolicy --> AdaptivePolicyParameters
+LendingPolicy --> PolicyDecision : returns
+ReaderLendingHistoryProvider --> LendingRepository
+ReaderLendingHistoryProvider --> Clock
+ReaderLendingHistoryProvider --> ReaderLendingHistory : creates
+@enduml

@@ -1,0 +1,36 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+title Lending policy selection and evaluation
+actor Reader
+participant "Lending REST API" as API
+participant LendingServiceImpl as Service
+participant ReaderLendingHistoryProvider as History
+participant LendingPolicySelector as Selector
+participant "Selected LendingPolicy" as Policy
+participant LendingRepository as Repo
+Reader -> API : Request lending (or renewal)
+API -> Service : create(request) / renew(request)
+Service -> History : historyFor(reader)
+History -> Repo : Reader's lendings
+Repo --> History : Lendings
+History --> Service : ReaderLendingHistory (dates from Clock)
+Service -> Selector : select(history)
+note right of Selector : Ordered rules; Standard\nwhen no rule matches
+Selector --> Service : Applicable policy
+alt New lending
+    Service -> Policy : evaluateNewLending(history)
+else Renewal
+    Service -> Policy : evaluateRenewal(lending, history)
+end
+Policy --> Service : PolicyDecision
+alt Allowed
+    Service -> Repo : save(lending with limit date from decision)
+    Repo --> Service : Saved lending
+    Service --> API : Lending
+    API --> Reader : Lending and due date
+else Rejected
+    Service --> API : Rejection with reason
+    API --> Reader : Rejection reason
+end
+@enduml

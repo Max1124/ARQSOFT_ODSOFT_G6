@@ -267,6 +267,20 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 **Pending decisions:** more notification methods to add; notification method failure behavior.
 
+### Sequence sketch — Lending policy selection and evaluation
+
+![Lending policy selection sequence](Images/LendingPolicySelectionSequence.png)
+
+On every new lending or renewal, `LendingServiceImpl` builds the reader's history, asks the selector for the applicable policy and applies its decision (EXT-LP-03 to EXT-LP-05). The service never names a concrete policy.
+
+### Structural sketch — Lending policy extension point
+
+![Lending policy structure](Images/LendingPolicyStructure.png)
+
+A new policy implements `LendingPolicy` with its own parameters; when it needs its own eligibility condition, a new `PolicySelectionRule` is added and both are registered at setup (EXT-LP-01 to EXT-LP-03).
+
+**Pending decisions:** answers to the open faculty questions (Adaptive count before or after the requested lending; Adaptive renewal duration and limit; renewal when the selected policy changes; history window dates); renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
+
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
 ### Design Kanban
