@@ -1,0 +1,29 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Lending policy collaboration boundary
+component "Test inputs\nand assertions" as Test
+rectangle "Declared real collaboration SUT" {
+ component "LendingController" as Controller
+ component "LendingServiceImpl" as Service
+ component "History provider" as Provider
+ component "Selector and rules" as Selector
+ component "Standard / Adaptive\npolicies" as Policies
+ component "LendingRepository" as Repo
+ Controller --> Service
+ Service --> Provider
+ Service --> Selector
+ Selector --> Policies
+ Provider --> Repo
+ Service --> Repo
+}
+component "Fixed Clock\n(outside SUT)" as Clock
+component "Test properties\n(parameter values)" as Props
+database "Dedicated test DB\nwith seeded history" as DB
+Test --> Controller
+Provider --> Clock
+Policies ..> Props : bound at startup
+Repo --> DB
+@enduml

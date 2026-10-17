@@ -1,0 +1,18 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Lending policy class isolation boundary
+component "AAA test" as Test
+rectangle "Class SUT (one at a time)" {
+ component "Real AdaptiveLendingPolicy\n(or Standard, selector, rule)" as Policy
+}
+component "Parameter object\n(fixed test values)" as Params
+component "ReaderLendingHistory fixture\n(dates from a fixed clock)" as History
+component "Rule / policy doubles\n(selector tests only)" as Doubles
+Test --> Policy : inputs / assertions
+Policy --> Params
+Policy --> History
+Policy --> Doubles
+@enduml
