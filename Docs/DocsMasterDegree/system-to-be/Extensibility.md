@@ -168,6 +168,11 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 |NOT-MTD-02| `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery. | Each mechanism's protocol and delivery details stay in its own class, so a change to one mechanism does not affect the others; covers the three required mechanisms (QAS2). |
 |NOT-MTD-03| `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`. | Lending business logic contains no mechanism-specific calls or conditions (QAS2); it can be tested with a test double of `NotificationService` instead of real delivery (QAS10). |
 |NOT-MTD-04| Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number from `ReaderDetails` and the email from the `username` of its `Reader`. | Notification mechanisms do not depend on the persistence technology, so the repository can be replaced by a test double (QAS10); contact data is read from the existing reader model instead of being duplicated. |
+| EXT-LP-01 | Define `LendingPolicy` as the common contract for evaluating a new lending and a renewal; it returns a `PolicyDecision` (allowed with duration, or rejected with a reason). | New policies implement a stable contract instead of adding conditions to `LendingServiceImpl` (QAS3); readers receive a reason when rejected (US13, US14). |
+| EXT-LP-02 | Implement `StandardLendingPolicy` and `AdaptiveLendingPolicy`, each with an immutable parameters object validated on creation. | Each policy encapsulates its own rules and limits (LP-S1–LP-S5, LP-A1–LP-A5); invalid parameter combinations are rejected at setup (LP-A3). |
+| EXT-LP-03 | `LendingPolicySelector` evaluates an ordered list of `PolicySelectionRule`s and returns the first matching policy, or Standard when none matches; it is called on every new lending and renewal. | Selection rules are kept apart from policy rules, so policies and rules change independently (QAS3); selection follows the reader's current history (LP-SEL1, LP-SEL2, QAS8). Configurability details are in CFG-LP-01 to CFG-LP-04. |
+| EXT-LP-04 | Build a read-only `ReaderLendingHistory` snapshot through a provider that uses `LendingRepository` and an injected `Clock`. | Policies and rules do not depend on repositories or the system clock, so they can be tested with fixed data and dates (QAS11). |
+| EXT-LP-05 | `LendingServiceImpl` obtains the history, asks the selector for the policy and applies the returned decision; it contains no policy names, limits or periods. | The service is changed once to introduce the contract; later policies do not change it (QAS3). It can be tested with a mocked selector and policy (QAS11). |
 
 ### Constraints
 
@@ -182,6 +187,10 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | CON-NOT-3 | Allow the notification systems to be used to be chosen at setup time. | ADD.md, Reader notifications requirements |
 | CON-NOT-4 | Use the reader contact data already in the model: phone number in `ReaderDetails`, email as the `username` of `Reader`. | Current code |
 | CON-NOT-5 | Keep mechanism-specific dependencies (SMS, email and webhook clients) outside `LendingServiceImpl` and the domain. | Proposed architectural boundary supporting QAS2 |
+| CON-LP-1 | Keep the existing backend and valid `Lending` invariants (dates, lending number, fines). | Project context and current code |
+| CON-LP-2 | Lending parameter values are not externally configured; numeric constraints of the lending rules still apply. | ADD.md scope note (specification section 5 excluded) |
+| CON-LP-3 | Do not assume answers to the open faculty questions; calculations affected by them remain pending. | ADD.md, pending questions |
+| CON-LP-4 | Keep policies and selection rules free of Spring, persistence and the system clock. | Proposed architectural boundary supporting QAS3/QAS11 |
 
 ### Responsibility assignment rationale
 
@@ -200,8 +209,19 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | `WebhookNotificationService` | Deliver notifications by webhook. Source of the webhook target pending. | Implementation of `NotificationService` | QAS2, CON-NOT-2 |
 | `LendingServiceImpl` | Trigger notifications through `NotificationService` only, without mechanism-specific calls. | Existing application service | QAS2, CON-NOT-1, CON-NOT-5 |
 | `ReaderRepository` | Provide reader contact data to the notification implementations. | Existing repository interface | CON-NOT-4 |
+| `LendingPolicy` | Evaluate a new lending or a renewal for a reader's history and return a decision. | Common policy contract (Strategy) | QAS3, US13, US14 |
+| `StandardLendingPolicy`, `AdaptiveLendingPolicy` | Apply their own rules and parameters (LP-S*, LP-A*). | Policy implementations; no Spring or persistence | QAS3, CON-LP-2, CON-LP-4 |
+| `StandardPolicyParameters`, `AdaptivePolicyParameters` | Hold and validate the parameter values of each policy. | Immutable; validated on creation | LP-A3, CON-LP-2 |
+| `PolicyDecision` | Carry the outcome: allowed with duration, or rejected with a reason. | Result value; no persistence | US13, US14 |
+| `LendingPolicySelector` | Evaluate the ordered selection rules and return the applicable policy; Standard by default. | Intermediary; runtime per-request binding | QAS3, QAS8 |
+| `PolicySelectionRule`, `AdaptiveEligibilityRule` | Decide whether a reader qualifies for a policy (LP-SEL1). | Pure logic over the history snapshot | QAS8, QAS11 |
+| `ReaderLendingHistory` and its provider | Provide active, overdue, completed and on-time lending facts for the reader, built with an injected `Clock`. | Read-only snapshot; provider uses `LendingRepository` | QAS11, CON-LP-4 |
+| `LendingServiceImpl` (lending policies) | Obtain the history, select the policy, apply the decision and create or reject the lending. | Existing application service, changed once | QAS3, CON-LP-1 |
+| Setup composition (lending) | Register the installed policies, their parameters, the ordered rules and the `Clock`. | Spring configuration; adding a policy adds a registration | QAS3, CON-LP-2 |
 
 Names are proposed, not existing classes. Suggested placement: contract/data/coordinator in `bookmanagement.services` (optionally a bibliography subpackage), adapters/provider DTOs in `bookmanagement.infrastructure.bibliography`.
+
+For lending policies, the suggested placement is `lendingmanagement.services.policy` for the contract, policies, parameters, decision, selector, rules and history snapshot. The history provider is an application service that uses the existing `LendingRepository`.
 
 ### Connection of elements — Interface contracts
 
@@ -212,11 +232,18 @@ Names are proposed, not existing classes. Suggested placement: contract/data/coo
 | Merge | Ordered normalized successful results | Combined data/provenance; precedence/conflict rules pending |
 | Registration | Complete required metadata and resolved catalogue associations | Valid saved `Book`, or clear validation response without saving an incomplete book |
 | Notification Mehtod | Notification methods a Reader has elected to use | Reader must have selected at least one notification method and have valid contact info petaining to it |
+| Lending history | Reader number and current date from the injected `Clock` | Read-only `ReaderLendingHistory`; no writes |
+| Policy selection | `ReaderLendingHistory` | Applicable `LendingPolicy`; Standard when no rule matches; no changes to existing lendings |
+| Policy — new lending | `ReaderLendingHistory` | `PolicyDecision`: allowed with duration in days, or rejected with a reason; no persistence |
+| Policy — renewal | Lending to renew and `ReaderLendingHistory` | `PolicyDecision`: allowed with extension, or rejected with a reason; Adaptive renewal calculation pending faculty answer |
+| Lending service | New lending or renewal request | Saved `Lending` with its limit date taken from the decision, or a rejection carrying the decision reason |
 ### Technical Memo
 
 [Extensibility — Bibliographic sources](Technical%20Memos/Extensibility/BibliographicSources.md)
 
 [Extensibility — Notification Methods](Technical%20Memos/Extensibility/Notifications.md)
+
+[Extensibility — Lending policies](Technical%20Memos/Extensibility/LendingPolicies.md)
 
 ## Step 6 — Sketch views and record decisions
 
