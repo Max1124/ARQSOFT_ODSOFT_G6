@@ -148,7 +148,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | CFG-NOT-03 | Dispatch uses the intersection of enabled channels and the reader's chosen channels. | Later notifications follow the reader's current preference without restart (QAS6). |
 | CFG-LP-01 | `LendingPolicySelector` is invoked on every new lending and every renewal request and returns the applicable policy for that reader. No selection result is cached across requests. | LP-SEL2; selection reflects the reader's current history without restart or manual switching (QAS8). |
 | CFG-LP-02 | An ordered list of `PolicySelectionRule`s is assembled at setup; Standard is returned when none matches. `AdaptiveEligibilityRule` requires all three conditions: enough completed lendings, enough on-time returns, no currently overdue lending, within the history window (LP-SEL1). | Selection is data-driven by history and extensible by adding rules; Standard is an explicit default (spec 4.1). |
-| CFG-LP-03 | All quantitative parameters (Standard, Adaptive and selection: `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`) are read from setup properties at startup and bound into immutable parameter objects, one per policy plus one for selection. Policies and rules receive the objects; they never read properties. | Specification 5.1–5.2: values change without source changes (QAS7, US10); policies stay free of Spring (CON-LP-4). |
+| CFG-LP-03 | All quantitative parameters (Standard, Adaptive and selection: `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`) are read from setup properties at startup and bound into immutable parameter objects, one per policy plus one for selection (`StandardPolicyParameters`, `AdaptivePolicyParameters`, `PolicySelectionParameters`). Policies and rules receive the objects; they never read properties. | Specification 5.1–5.2: values change without source changes (QAS7, US10); policies stay free of Spring (CON-LP-4). |
 | CFG-LP-05 | The parameter objects validate their constraints when built (2.x positive values, 3.5 ordering, 4.2 ranges); any violation stops startup with a message naming the parameter and the constraint. | Specification 5.3; 100% of invalid values detected at startup (QAS7). Fail fast rather than run with an invalid policy. |
 | CFG-LP-04 | Selection only chooses a policy; it does not modify existing lendings. | Matches QAS8; renewal effects when the policy changes remain a pending faculty question. |
 
@@ -200,13 +200,22 @@ Names are proposed, not existing classes.
 
 [Extensibility — Lending policies](Technical%20Memos/Extensibility/LendingPolicies.md)
 
+[Configurability — Lending policies](Technical%20Memos/Configurability/LendingPolicies.md)
+
 
 ## Step 6 — Sketch views and record decisions
+
+### Sequence sketch — Lending parameter binding at startup
+
+![Lending parameter binding](Images/LendingParameterBinding.png)
+
+At startup the binding reads the lending properties and builds the three parameter objects; each validates its own constraints. If all are valid, the policies, rules and selector are registered with them; otherwise startup fails with a message naming the parameter and constraint (CFG-LP-03, CFG-LP-05). Per-request selection is shown in [the lending policy selection sequence](Images/LendingPolicySelectionSequence.png) of Extensibility.
 
 
 **Pending decisions:**
 
 - Property names, file location and environment-variable precedence (including the lending parameter keys).
+- Reuse or replacement of the existing `lendingDurationInDays` key; unit of `MinOnTimeRatio` in configuration.
 - Behaviour when no bibliographic source or no notification channel is enabled.
 - Source of the webhook target.
 
@@ -220,8 +229,9 @@ This board evaluates the configurability drivers at design level. Not addressed 
 |---|---|---|
 | Bibliographic source selection — QAS4: identifier list and composition proposed; property format and failure behaviour still need refinement | | |
 | Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement | | |
+| | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup and per-request selector proposed; property names and cases affected by open faculty questions still pending | |
 
-Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) will be detailed under testability.
+Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) is detailed in [Testability.md](Testability.md).
 
 ### Analysis and next verification
 

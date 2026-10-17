@@ -6,7 +6,9 @@ This file details the ADD process used to develop new functionalities.
 
 - [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; only its proposed design is detailed so far. Not yet implemented.
 
-- [Testability — roadmap and iteration 1: bibliographic sources](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation. Notifications and lending policies remain planned; no test implementation is claimed.
+- [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1) and lending policies (iteration 3). Notifications remain planned; no test implementation is claimed.
+
+- [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Not yet implemented.
 
 ## Requirements
 Below are listed the non-functional and functional requirements

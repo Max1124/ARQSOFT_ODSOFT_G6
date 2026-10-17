@@ -1,0 +1,28 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+title Lending parameter binding at startup
+actor Administrator
+participant "Setup properties\n(library.properties / env vars)" as Props
+participant "Lending parameter binding" as Binding
+participant "StandardPolicyParameters" as Std
+participant "AdaptivePolicyParameters" as Adp
+participant "PolicySelectionParameters" as Sel
+participant "Setup composition" as Comp
+Administrator -> Props : Set values (e.g. LendingPeriod = 21)
+note over Binding : Application startup
+Binding -> Props : Read lending parameter keys
+Binding -> Std : create(values)
+Binding -> Adp : create(values)
+Binding -> Sel : create(values)
+alt All constraints hold
+    Std --> Binding : Valid object
+    Adp --> Binding : Valid object
+    Sel --> Binding : Valid object
+    Binding -> Comp : Register policies, rules and selector with the objects
+    Comp --> Administrator : Application started
+else A constraint is violated (e.g. FirstThreshold >= SecondThreshold)
+    Adp --> Binding : Validation error naming parameter and constraint
+    Binding --> Administrator : Startup fails with that message
+end
+@enduml
