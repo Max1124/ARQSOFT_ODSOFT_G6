@@ -41,7 +41,7 @@ Plain input/output fixtures and standard library/framework execution must be dis
 | Iteration 2 | Verify notification dispatch and channels without sending real messages. | QAS10 — Testability; US6, US7, US9; US8 remains proposed scope | Channel doubles, recording interactions, transport boundaries |
 | Iteration 3 | Verify policies and per-reader selection with controlled dates and history. | QAS11 — Testability; US11, US13, US14 | Policy isolation, controlled clock, history doubles, boundary cases |
 
-The roadmap groups testing-related architectural concerns, not test counts. External configuration of lending parameters remains excluded; automatic policy selection remains included pending faculty confirmation.
+The roadmap groups testing-related architectural concerns, not test counts. Lending parameters are externally configured (QAS7), so parameter validation is tested in isolation; automatic policy selection remains included pending faculty confirmation.
 
 ### Iteration 1 — Bibliographic information
 

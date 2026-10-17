@@ -8,14 +8,14 @@ Requirements and scenarios: [ADD.md](ADD.md). Extensibility design this document
 
 ### Requirement
 
-The system must let the choice of bibliographic sources and notification channels be made at setup time, without changing source code (ARQSOFT 2026-2027 Project 1 for Students 1.1, sections 1.3.3.1–1.3.3.2). The lending policy specification (sections 1 and 4) requires that the policy applied to each reader be selected automatically, according to the reader's history, on every new lending and renewal. Section 5 of that specification (external setup-time configuration of the lending parameters) is excluded for this group, following the reported faculty instruction recorded in [ADD.md](ADD.md).
+The system must let the choice of bibliographic sources and notification channels be made at setup time, without changing source code (ARQSOFT 2026-2027 Project 1 for Students 1.1, sections 1.3.3.1–1.3.3.2). The lending policy specification (sections 1 and 4) requires that the policy applied to each reader be selected automatically, according to the reader's history, on every new lending and renewal. Section 5 of that specification requires all quantitative lending parameters to be externally configurable at setup time, without source changes, and to satisfy the policy constraints (US10, QAS7).
 
 ### Variation and configuration points
 
 - Bibliographic sources: which of the installed sources (Google Books, Open Library, later others) are consulted, one or several at a time. Chosen at setup.
 - Notification channels: which of the installed channels (email, SMS, webhook, later others) are enabled. Chosen at setup. Each reader then chooses among the enabled channels at runtime.
 - Lending policies: which installed policy (Standard, Adaptive, later others) applies to a reader. Chosen automatically at runtime, per reader and per request, from the reader's history (specification section 4).
-- Lending parameter values (`MaxActiveLendings`, `LendingPeriod`, thresholds, periods, `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`, and so on): **not** externally configurable for this group. They are validated, immutable values defined in code, which keeps external configuration as an evolution point.
+- Lending parameter values (`MaxActiveLendings`, `LendingPeriod`, `MaxRenewals`, `RenewalPeriod`, thresholds, periods, `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`): externally configurable at setup (specification section 5). Read at startup and validated against the policy constraints; a change takes effect after one restart.
 
 Retain the existing Java/Spring REST backend and the existing `config/library.properties` mechanism.
 
@@ -27,7 +27,7 @@ Retain the existing Java/Spring REST backend and the existing `config/library.pr
 |---|---|---|---|
 | Iteration 1 | Let the Administrator choose, at setup, which bibliographic sources are consulted, one or several. | QAS4 — Configurability; US5. Related: US3, EXT-BIB-04, QAS1, QAS9 | Configuration-driven behaviour, defer binding, setup-time composition, dependency injection |
 | Iteration 2 | Let the Administrator choose, at setup, which notification channels are enabled, and let each reader choose among them at runtime. | QAS5, QAS6 — Configurability; US8, US9. Related: QAS2, QAS10 | Configuration-driven behaviour, channel registry, validation against the enabled set |
-| Iteration 3 | Select the applicable lending policy for each reader automatically on every new lending or renewal. | QAS8 — Configurability; US11, US14. Related: US13, QAS3, QAS11 | Configuration-driven behaviour (selection rules), dynamic binding, selector, controlled clock |
+| Iteration 3 | Configure the lending parameters at setup, and select the applicable lending policy for each reader automatically on every new lending or renewal. | QAS7, QAS8 — Configurability; US10, US11, US14. Related: US13, QAS3, QAS11 | Configuration-driven behaviour (parameters, selection rules), fail-fast validation, dynamic binding, selector, controlled clock |
 
 The roadmap is tentative: it orders architectural concerns, not coding stages. Design concepts are candidates to evaluate in each iteration. Each iteration closes the configuration point that the corresponding [Extensibility](Extensibility.md) iteration left open (EXT-BIB-04, NOT-MTD-01 to NOT-MTD-04, and the lending selector).
 
@@ -41,9 +41,9 @@ Goal: the enabled channels come from setup configuration, and reader preferences
 
 ### Iteration 3 — Lending policies
 
-Goal: choose, for each reader and on every new lending or renewal, the applicable policy from the reader's history, without restart and without manual switching. Primary driver: QAS8. Related drivers: QAS3 (adding a policy), QAS11 (policy testability). Related requirements: US11, US14 and rules LP-SEL1–LP-SEL2 in [ADD.md](ADD.md).
+Goal: the lending parameters come from setup configuration and are validated at startup; for each reader and on every new lending or renewal, the applicable policy is chosen from the reader's history, without restart and without manual switching. Primary drivers: QAS7 and QAS8. Related drivers: QAS3 (adding a policy), QAS11 (policy testability). Related requirements: US10, US11, US14 and rules LP-SEL1–LP-SEL2, LP-CFG1–LP-CFG2 in [ADD.md](ADD.md).
 
-Selection rationale: the selection rules and thresholds of section 4 are what the specification leaves variable per reader. QAS8 is the Configurability scenario in ADD.md for lending, and it states that it specifies runtime selection rather than setup-time reconfiguration. Specification section 5 (external parameter configuration) is excluded, so parameter values are not a driver of this iteration.
+Selection rationale: section 5 makes every quantitative parameter a setup-time configuration point (QAS7), and section 4 makes the policy choice a runtime decision per reader (QAS8). Both affect how policies obtain their values and how the service obtains its policy, so they are addressed together.
 
 ## Step 3 — Choose one or more elements of the system to decompose
 
@@ -62,6 +62,7 @@ Selection rationale: the selection rules and thresholds of section 4 are what th
 
 ### Elements to decompose — Iteration 3
 
+- **Lending parameter configuration:** the setup properties for Standard, Adaptive and selection parameters, bound and validated at startup (QAS7).
 - **Policy selector:** chooses the policy for a reader on every request (LP-SEL2).
 - **Selection rules:** one rule per non-default policy, starting with Adaptive eligibility (LP-SEL1); Standard is the default (spec 4.1).
 - **Reader lending history:** facts the rules need (completed lendings and on-time ratio in `HistoryPeriod`, overdue lending) without exposing repositories.
@@ -102,7 +103,7 @@ The following concepts are selected as design proposals from the faculty's Tacti
 
 #### Flexibility tactics — Tactics (iii)
 
-- **Configuration-Driven Behavior:** enable one or several installed sources and channels through setup configuration, without changing the coordinator or dispatcher (US5, US9, QAS4, QAS5). In iteration 3 the same idea applies to the ordered list of selection rules, which is assembled at setup. It is **not** applied to the lending parameter values, because section 5 of the specification is excluded.
+- **Configuration-Driven Behavior:** enable one or several installed sources and channels through setup configuration, without changing the coordinator or dispatcher (US5, US9, QAS4, QAS5). In iteration 3 the same idea applies to the lending parameter values (QAS7) and to the ordered list of selection rules, both assembled at setup.
 - **Dynamic Binding:** runtime, per-request choice of the lending policy from the reader's current history (QAS8). Reader notification preferences (QAS6) are also runtime data, restricted to the channels bound at setup.
 
 #### Testability tactics — Tactics (vi)
@@ -130,9 +131,9 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | L1 — Eligibility inside the service | `LendingServiceImpl` checks eligibility and branches on policy type. | Simple; few types | Every new policy or rule changes the service; fails QAS3 and QAS8 testability |
 | L2 — Self-selecting policies | Each policy decides whether it applies to a reader, with a priority. | Fewer types | Mixes LP-SEL rules into policies; Standard default becomes implicit; priorities change when a policy is added |
 | L3 — Separate selection rules and selector | Ordered rules map reader history to a policy; Standard is the default. | Selection tested alone; visible as its own element; supports QAS8, QAS11 | More types; rule order must be explicit |
-| L4 — Selection stored or edited as external data | Selection thresholds and policy mapping kept as configuration or database data. | Changes without redeploy | Specification section 5 is excluded; over-engineering for two policies; harder to test |
+| L4 — Selection stored or edited as external data | Selection thresholds and policy mapping kept as configuration or database data. | Changes without redeploy | Thresholds are already setup-time configuration (QAS7); editing the policy mapping at runtime is not required; over-engineering for two policies; harder to test |
 
-**Proposed choice:** L3, the same selector design recorded in [the lending policies memo](Technical%20Memos/Extensibility/LendingPolicies.md) (EXT-LP-03). Configurability adds no new element to it; it records that selection is performed per request and that its thresholds are not externally configured.
+**Proposed choice:** L3, the same selector design recorded in [the lending policies memo](Technical%20Memos/Extensibility/LendingPolicies.md) (EXT-LP-03). Configurability adds no new element to it; it records that selection is performed per request and that its thresholds are setup-time configuration (CFG-LP-03).
 
 ## Step 5 — Instantiate architectural elements, allocate responsibilities, and define interfaces
 
@@ -147,7 +148,8 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | CFG-NOT-03 | Dispatch uses the intersection of enabled channels and the reader's chosen channels. | Later notifications follow the reader's current preference without restart (QAS6). |
 | CFG-LP-01 | `LendingPolicySelector` is invoked on every new lending and every renewal request and returns the applicable policy for that reader. No selection result is cached across requests. | LP-SEL2; selection reflects the reader's current history without restart or manual switching (QAS8). |
 | CFG-LP-02 | An ordered list of `PolicySelectionRule`s is assembled at setup; Standard is returned when none matches. `AdaptiveEligibilityRule` requires all three conditions: enough completed lendings, enough on-time returns, no currently overdue lending, within the history window (LP-SEL1). | Selection is data-driven by history and extensible by adding rules; Standard is an explicit default (spec 4.1). |
-| CFG-LP-03 | The selection thresholds (`HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`) and policy parameters are validated, immutable objects defined in code. They are not read from external configuration. | Specification section 5 is excluded for this group; keeping them in one object per policy preserves an easy path to externalize them later. |
+| CFG-LP-03 | All quantitative parameters (Standard, Adaptive and selection: `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`) are read from setup properties at startup and bound into immutable parameter objects, one per policy plus one for selection. Policies and rules receive the objects; they never read properties. | Specification 5.1–5.2: values change without source changes (QAS7, US10); policies stay free of Spring (CON-LP-4). |
+| CFG-LP-05 | The parameter objects validate their constraints when built (2.x positive values, 3.5 ordering, 4.2 ranges); any violation stops startup with a message naming the parameter and the constraint. | Specification 5.3; 100% of invalid values detected at startup (QAS7). Fail fast rather than run with an invalid policy. |
 | CFG-LP-04 | Selection only chooses a policy; it does not modify existing lendings. | Matches QAS8; renewal effects when the policy changes remain a pending faculty question. |
 
 ### Constraints
@@ -158,7 +160,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | CON-CFG-2 | Enabled sources and channels are read at startup; a change takes effect after one restart. | QAS4, QAS5 |
 | CON-CFG-3 | Reader channel preferences are runtime data, applied without restart, and limited to enabled channels. | QAS6 |
 | CON-CFG-4 | The applicable lending policy is selected per reader on every new lending and renewal. | LP-SEL2, QAS8 |
-| CON-CFG-5 | Lending parameter values are not externally configured (specification section 5 excluded). Numeric constraints of sections 2–4 still apply. | ADD.md scope note |
+| CON-CFG-5 | Lending parameter values are externally configured at setup and must satisfy the constraints of sections 2–4; invalid values stop startup. | Specification section 5, QAS7 |
 | CON-CFG-6 | Keep the existing Java/Spring backend and the `config/library.properties` mechanism. | Project context and current code |
 
 ### Responsibility assignment rationale
@@ -175,6 +177,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | `PolicySelectionRule` / `AdaptiveEligibilityRule` | Decide whether a reader qualifies for a policy (LP-SEL1). | Pure logic over a history snapshot | QAS8, QAS11 |
 | `ReaderLendingHistory` and its provider | Provide completed, on-time and overdue facts for the window, built with an injected `Clock`. | Read-only snapshot | QAS8, QAS11 |
 | `LendingServiceImpl` | Ask the selector for the policy and delegate the decision; no policy names or limits. | Existing service (changed once, see Extensibility) | QAS3, QAS8 |
+| Lending parameter binding | Read the lending setup properties, build the validated parameter objects and fail startup on invalid values. | Spring configuration; setup-time binding | QAS7, CFG-LP-03, CFG-LP-05 |
 
 Names are proposed, not existing classes.
 
@@ -185,6 +188,7 @@ Names are proposed, not existing classes.
 | Setup properties → source composition | List of source identifiers | Exactly the matching implementations in order; unknown identifier fails startup |
 | Setup properties → channel composition | List of channel identifiers | Exactly the matching implementations; disabled channels are not loaded and send 0 notifications |
 | Reader preferences | Channels chosen by a reader | Stored if all are enabled; otherwise rejected, naming the channel; other readers unaffected |
+| Setup properties → lending parameter binding | Standard, Adaptive and selection parameter values | Validated immutable parameter objects; any constraint violation fails startup naming the parameter |
 | Selector | Reader identity and request time | Applicable policy for this request; Standard when no rule matches; no side effects on existing lendings |
 | Selection rule | Read-only history snapshot | Whether the reader qualifies; no repository, clock or Spring access |
 
@@ -202,7 +206,7 @@ Names are proposed, not existing classes.
 
 **Pending decisions:**
 
-- Property names, file location and environment-variable precedence.
+- Property names, file location and environment-variable precedence (including the lending parameter keys).
 - Behaviour when no bibliographic source or no notification channel is enabled.
 - Source of the webhook target.
 
@@ -226,6 +230,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
 - **Experiments:**
     - Enable each combination of sources and channels (single, several) and confirm the effect after one restart with no code change.
     - Supply an unknown identifier and confirm startup fails with a message naming it.
+    - Change a lending parameter (e.g. `LendingPeriod` 15 → 21) and confirm new lendings use it after one restart with no code change; supply `FirstThreshold >= SecondThreshold` and confirm startup fails naming the constraint.
     - Change a reader's channels to include a disabled one and confirm rejection naming the channel.
     - Request a lending and a renewal for readers with different histories and confirm each is evaluated with the policy its history selects.
 - **Representative tests:** disabled channels send 0 notifications; other readers' preferences are unaffected; each LP-SEL1 condition and its boundaries; a reader changes policy between two requests without restart. Use Arrange → Act → Assert, with a fixed clock for selection.

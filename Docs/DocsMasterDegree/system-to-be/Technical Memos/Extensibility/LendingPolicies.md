@@ -2,7 +2,7 @@
 
 Status: proposed architecture; not implemented or verified.
 
-Related iteration: [Extensibility, iteration 3](../../Extensibility.md). Primary driver: QAS3. Related drivers: QAS8, QAS11. Related requirements: US11, US13, US14 and lending rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](../../ADD.md). Faculty basis: Project 1 section 1.3.3.3, *ARQSOFT 2026-2027 Lending Policies Specification v1.0* (sections 2–4; section 5 excluded for this group) and the *Technical Memo* examples in *Something about Attribute-Driven Design 0.9* (Step 5).
+Related iteration: [Extensibility, iteration 3](../../Extensibility.md). Primary driver: QAS3. Related drivers: QAS8, QAS11. Related requirements: US11, US13, US14 and lending rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](../../ADD.md). Faculty basis: Project 1 section 1.3.3.3, *ARQSOFT 2026-2027 Lending Policies Specification v1.0* (sections 2–5; section 5 is detailed in [Configurability.md](../../Configurability.md)) and the *Technical Memo* examples in *Something about Attribute-Driven Design 0.9* (Step 5).
 
 ## Issue
 
@@ -21,7 +21,7 @@ Adopt the following tactics: Abstract Common Services, Encapsulate, Use an Inter
 - Two policies are required now (Standard, Adaptive); more are expected (evolution point).
 - Selection depends on the reader's history (`HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`, no overdue lending) and must be re-evaluated on every new lending and renewal (LP-SEL1, LP-SEL2).
 - Rules depend on the current date (overdue lendings, history window, due dates), so tests need a controllable time source (QAS11).
-- External parameter configuration (faculty section 5) is excluded for this group. Parameters still have validity constraints (positive values, LP-A3 ordering).
+- All quantitative parameters must be externally configurable at setup and satisfy their constraints (specification section 5, QAS7), so policies cannot hard-code them.
 - Five open faculty questions affect calculations: Adaptive count before or after the requested lending; Adaptive renewal duration and limit; interaction when the selected policy changes on renewal; history window dates and boundaries; whether an overdue lending can be renewed under Adaptive.
 - Preserve the existing layered Java/Spring REST backend and the `Lending` invariants.
 
@@ -29,7 +29,7 @@ Adopt the following tactics: Abstract Common Services, Encapsulate, Use an Inter
 
 EXT-LP-01 (proposed): `LendingPolicy` is the common contract. It evaluates a new lending and a renewal and returns a `PolicyDecision`: allowed with the resulting duration, or rejected with a reason that can be returned to the reader (US13, US14).
 
-EXT-LP-02 (proposed): `StandardLendingPolicy` and `AdaptiveLendingPolicy` implement the contract. Each receives an immutable parameters object (`StandardPolicyParameters`, `AdaptivePolicyParameters`) that validates its constraints when created (LP-S1–LP-S3, LP-A3). Parameter values are defined in code because external configuration is excluded.
+EXT-LP-02 (proposed): `StandardLendingPolicy` and `AdaptiveLendingPolicy` implement the contract. Each receives an immutable parameters object (`StandardPolicyParameters`, `AdaptivePolicyParameters`) that validates its constraints when created (LP-S1–LP-S3, LP-A3). Parameter values are bound from external setup configuration; invalid values stop startup (QAS7).
 
 EXT-LP-03 (proposed): `LendingPolicySelector` evaluates an ordered list of `PolicySelectionRule`s against the reader's history and returns the first matching policy, or Standard when none matches. `AdaptiveEligibilityRule` implements LP-SEL1. The selector is called on every new lending and renewal (LP-SEL2).
 
@@ -47,7 +47,7 @@ The cost is more types (contract, two policies, two parameter objects, selector,
 
 - **Conditional logic in `LendingServiceImpl`:** simplest now, but every new policy or eligibility rule changes the service, and rules cannot be tested apart from it. Fails QAS3.
 - **Self-selecting policies:** each policy also decides whether it applies, with a priority. It needs fewer types, but mixes LP-SEL rules into policy classes, makes the Standard default implicit, and adding a policy may require changing other priorities.
-- **External rules engine or database-defined rules:** allows changes without redeploying, but is over-engineering for two policies, depends on configuration that is out of scope, and is harder to test.
+- **External rules engine or database-defined rules:** allows changes without redeploying, but is over-engineering for two policies, goes beyond the setup-time configuration required (QAS7), and is harder to test.
 
 The selected alternative separates what a policy allows from who gets it. It is the only option among these that meets QAS3 while keeping QAS8 and QAS11 testable in isolation.
 
@@ -57,7 +57,7 @@ The selected alternative separates what a policy allows from who gets it. It is 
 - Renewal model on `Lending`: renewal count, and whether to record the policy applied when the lending was created.
 - Rule order when more than one non-default rule matches.
 - REST response format for rejection reasons.
-- Where parameter values are defined (constants or setup composition).
+- Property names for each policy's parameters (see [Configurability.md](../../Configurability.md)).
 - Concurrent requests for the same reader can both pass the active-lending limit; this already exists in the current code and is not solved by this design.
 - Optional US12 endpoint to consult the applicable policy.
 

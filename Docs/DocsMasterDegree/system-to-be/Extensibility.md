@@ -16,7 +16,7 @@ The system must support new bibliographic sources, notification channels and len
 - Notification channels: email, SMS and webhook now; additional channels later.
 - Lending policies: Standard and Adaptive now; additional policies later.
 
-Retain the existing Java/Spring REST backend. External lending parameter configuration is excluded for this group; automatic policy selection remains included pending faculty confirmation.
+Retain the existing Java/Spring REST backend. Lending parameters are externally configurable at setup (specification section 5, detailed in [Configurability.md](Configurability.md)); automatic policy selection remains included pending faculty confirmation.
 
 ## Step 2 — Establish goals and select inputs to be considered in the iteration
 
@@ -40,7 +40,7 @@ Current iteration: Bibliographic information. Primary driver: QAS1. Related driv
 
 Goal: add lending policies with limited impact on the lending service, while the applicable policy is chosen per reader at runtime. Primary driver: QAS3. Related drivers: QAS8 (runtime per-reader selection) and QAS11 (policy testability). Related requirements: US11, US13, US14 and rules LP-S1–LP-S5, LP-A1–LP-A5, LP-SEL1–LP-SEL2 in [ADD.md](ADD.md), from *ARQSOFT 2026-2027 Lending Policies Specification v1.0* sections 2–4.
 
-Selection rationale: lending rules are the only extension point that already exists as hardcoded business logic, so every new policy currently forces changes in `LendingServiceImpl`. QAS8 is included because selection decides which policy is applied; designing the policy contract without it would have to be revisited. External parameter configuration (faculty section 5) is excluded for this group, so configurability is not a driver of this iteration.
+Selection rationale: lending rules are the only extension point that already exists as hardcoded business logic, so every new policy currently forces changes in `LendingServiceImpl`. QAS8 is included because selection decides which policy is applied; designing the policy contract without it would have to be revisited. External parameter configuration (specification section 5, QAS7) is a configurability driver detailed in [Configurability.md](Configurability.md); here it only requires that each policy receives its parameters from outside instead of hard-coding them.
 
 ## Step 3 — Choose one or more elements of the system to decompose
 
@@ -138,7 +138,7 @@ Modifiability tactics (faculty ADD material, Tactics (iii), and the catalogue ab
 
 - **Flexibility — Dynamic Binding** (Tactics (iii)): runtime, per-request policy choice from the reader's current history (QAS8).
 - **Flexibility — Use of Abstractions** (Tactics (iii)): the same `LendingPolicy` abstraction already selected; not an additional mechanism.
-- **Flexibility — Configuration-Driven Behavior** (Tactics (iii)): **not selected**. External parameter configuration is excluded for this group. Parameters are kept as validated, immutable objects defined in code, which keeps this as an evolution point (Step 1, *Variation vs. Evolution Points*).
+- **Flexibility — Configuration-Driven Behavior** (Tactics (iii)): parameter values come from setup configuration and are validated when the parameter objects are built (QAS7, specification section 5). Policies receive the objects, so a policy never reads configuration itself.
 - **Testability — Dependency Injection, Isolation, Mocking** (Tactics (vi)): policies receive parameters and a history snapshot, so they are tested without Spring or a database; the service is tested with a mocked selector/policy; "today" comes from an injected clock (QAS11).
 
 Pattern: **Strategy** for policies, with an ordered list of selection rules and a default policy.
@@ -150,7 +150,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | A1 — Conditional logic in the service | `LendingServiceImpl` checks eligibility and branches on policy type. | Simple; few types | Every new policy or rule changes the service; hard to test rules in isolation; fails QAS3 |
 | A2 — Strategy, self-selecting policies | Each policy implements the contract and also decides if it applies to a reader (with a priority). | Fewer types; one class per policy | Mixes LP-SEL rules into policies; adding a policy may require changing others' priorities; Standard "default" becomes implicit |
 | A3 — Strategy + separate selection rules + selector | Policies implement the contract; ordered selection rules map reader history to a policy; Standard is the default. | Localizes policy and selection changes; each part tested alone; supports QAS3, QAS8, QAS11 | More types; ordering of rules must be explicit |
-| A4 — External rules engine / database rules | Rules described as data and interpreted at runtime. | Changes without redeploy | Over-engineering for two policies (Step 1 over-engineering alert); configuration is out of scope; harder to test |
+| A4 — External rules engine / database rules | Rules described as data and interpreted at runtime. | Changes without redeploy | Over-engineering for two policies (Step 1 over-engineering alert); setup-time parameter configuration (QAS7) does not require runtime rule editing; harder to test |
 
 **Proposed choice:** A3. It is the only alternative where a new policy (and, when needed, its selection rule) is added without changing the service or existing policies, and where selection and policy rules are testable independently. The cost is more types and an explicit rule order. The full rationale is recorded in the lending policy technical memo (Step 5).
 
@@ -188,7 +188,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | CON-NOT-4 | Use the reader contact data already in the model: phone number in `ReaderDetails`, email as the `username` of `Reader`. | Current code |
 | CON-NOT-5 | Keep mechanism-specific dependencies (SMS, email and webhook clients) outside `LendingServiceImpl` and the domain. | Proposed architectural boundary supporting QAS2 |
 | CON-LP-1 | Keep the existing backend and valid `Lending` invariants (dates, lending number, fines). | Project context and current code |
-| CON-LP-2 | Lending parameter values are not externally configured; numeric constraints of the lending rules still apply. | ADD.md scope note (specification section 5 excluded) |
+| CON-LP-2 | Lending parameter values come from external setup configuration and must satisfy the policy constraints; invalid values stop startup. | Specification section 5, QAS7 |
 | CON-LP-3 | Do not assume answers to the open faculty questions; calculations affected by them remain pending. | ADD.md, pending questions |
 | CON-LP-4 | Keep policies and selection rules free of Spring, persistence and the system clock. | Proposed architectural boundary supporting QAS3/QAS11 |
 
@@ -217,7 +217,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | `PolicySelectionRule`, `AdaptiveEligibilityRule` | Decide whether a reader qualifies for a policy (LP-SEL1). | Pure logic over the history snapshot | QAS8, QAS11 |
 | `ReaderLendingHistory` and its provider | Provide active, overdue, completed and on-time lending facts for the reader, built with an injected `Clock`. | Read-only snapshot; provider uses `LendingRepository` | QAS11, CON-LP-4 |
 | `LendingServiceImpl` (lending policies) | Obtain the history, select the policy, apply the decision and create or reject the lending. | Existing application service, changed once | QAS3, CON-LP-1 |
-| Setup composition (lending) | Register the installed policies, their parameters, the ordered rules and the `Clock`. | Spring configuration; adding a policy adds a registration | QAS3, CON-LP-2 |
+| Setup composition (lending) | Bind the externally configured parameter values, build the validated parameter objects, and register the installed policies, the ordered rules and the `Clock`. | Spring configuration; adding a policy adds a registration and its parameter keys | QAS3, QAS7, CON-LP-2 |
 
 Names are proposed, not existing classes. Suggested placement: contract/data/coordinator in `bookmanagement.services` (optionally a bibliography subpackage), adapters/provider DTOs in `bookmanagement.infrastructure.bibliography`.
 

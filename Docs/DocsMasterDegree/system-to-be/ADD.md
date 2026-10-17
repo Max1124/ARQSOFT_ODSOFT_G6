@@ -31,6 +31,7 @@ Below are listed the non-functional and functional requirements
 - The system must support different lending policies according to the complementary lending policy
   specification.
 - The applicable lending policy must be selected automatically for each reader on every new lending or renewal request, according to the faculty selection rules.
+- All quantitative lending policy parameters must be externally configurable at setup time, without changing the source code, and configured values must satisfy the policy constraints (specification section 5).
 - The system must support addition of new lending policies with limited impact on existing functionality.
 
 ### Functional requirements
@@ -55,13 +56,14 @@ Below are listed the non-functional and functional requirements
 - US9: As an Administrator, I want to define at setup time which notification systems are enabled, without changing the source code.
 
 #### Lending policies
+- US10: As an Administrator, I want to set the lending policy parameters (Standard, Adaptive and selection) at setup time through external configuration, without changing the source code, and have invalid values rejected at startup.
 - US11: As a Reader, I want my applicable lending policy to be selected automatically from my history and current lending status on every new lending or renewal request.
 - US12 (group proposal): As a Librarian, I want to consult the policy applicable to a reader and its parameters. A consultation endpoint is additional scope, not a requirement for a global active policy.
 - US13: As a Reader, I want new lendings to follow the applicable Standard or Adaptive policy and receive a reason when rejected.
 - US14: As a Reader, I want to renew a lending only when the re-evaluated policy permits it.
 
 ### Lending rules from the faculty specification
-Scope for this two-person group: section 5 (external setup-time parameter configuration) is excluded following the reported faculty instruction. Section 4 (automatic policy selection) remains included pending faculty confirmation. US10 and QAS7 are retired; other identifiers are retained to preserve references. Numeric conditions in sections 2-4 still apply, without requiring external configuration or startup validation.
+Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 5 (external setup-time parameter configuration, US10/QAS7). An earlier version of this document excluded section 5 as for a two-person group; that exclusion is withdrawn. Section 4 (automatic policy selection) remains included pending faculty confirmation.
 - LP-S1 (2.1): Standard permits at most `MaxActiveLendings > 0` active lendings.
 - LP-S2 (2.2): Standard lending duration is `LendingPeriod > 0` days.
 - LP-S3 (2.3): Standard permits at most `MaxRenewals >= 0` renewals, each for `RenewalPeriod > 0` days.
@@ -74,6 +76,8 @@ Scope for this two-person group: section 5 (external setup-time parameter config
 - LP-A5 (3.7): A reader with any overdue lending cannot start a new Adaptive lending.
 - LP-SEL1 (4.1-4.2): Standard is the default. Adaptive applies only when, in the previous `HistoryPeriod > 0` months, the reader completed at least `MinCompletedLendings > 0`, returned at least `MinOnTimeRatio` (0-100%) of those lendings on time, and has no currently overdue lending. All conditions must hold.
 - LP-SEL2 (4.3): Re-evaluate selection for each reader on every new lending and renewal request.
+- LP-CFG1 (5.1-5.2): All quantitative parameters above are externally configurable at setup time; changing a value requires no source change.
+- LP-CFG2 (5.3): Configured values must satisfy the constraints of the corresponding policy; invalid values are rejected.
 
 ### Scope and classification notes
 The existing non-functional section mixes required functional capabilities with quality requirements. Retrieving external data and sending notifications are functional; limited impact of additions is extensibility; setup-time selection is configurability. User stories refine these capabilities.
@@ -170,6 +174,18 @@ The Library Management service does not adequately support **Extensibility**, **
 | Response | The system validates that every chosen channel is enabled and stores the preferences. Later notifications for that Reader go only through the chosen channels. A choice that includes a disabled channel is rejected with an error message naming that channel. |
 | Response measure | 0 code changes and 0 restarts. The new preferences apply to the next notification sent to that Reader. 100% of choices that include a disabled channel are rejected. Other Readers' preferences are unaffected. |
 
+#### QAS7 – Configuring lending policy parameters at setup
+**Related requirements:** US10, LP-CFG1, LP-CFG2
+
+| Element | Statement |
+|---|---|
+| Stimulus | The Administrator wants to change the Standard `LendingPeriod` from 15 to 21 days and the Adaptive thresholds. |
+| Stimulus source | Administrator. |
+| Environment | Setup / deployment time. |
+| Artifact | External configuration (`config/library.properties`, environment variables or profile) and the lending parameter binding. |
+| Response | At startup, the system loads the values into the policy and selection parameters. New lendings, renewals and policy selection use them. Values that violate the policy constraints (e.g. `FirstThreshold >= SecondThreshold`, non-positive periods) stop startup with a message naming the parameter and the constraint. |
+| Response measure | 0 lines of source code changed and no recompilation. Takes effect after one application restart. 100% of constraint violations are detected at startup. Existing lendings are not modified. |
+
 #### QAS8 – Automatic per-reader policy selection at runtime
 **Related requirements:** US11, US14, LP-SEL1, LP-SEL2
 
@@ -211,7 +227,7 @@ This scenario specifies runtime selection behaviour, rather than setup-time reco
 | Response measure | 0 real messages sent during tests. At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
 
 #### QAS11 – Testing lending policies independently
-**Related requirements:** US11, US13, US14
+**Related requirements:** US10, US11, US13, US14
 
 | Element | Statement |
 |---|---|
@@ -242,6 +258,7 @@ The table below shows what we determined to be the priority of features to imple
 |US7|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US8|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US9|<span style="color:yellow">Medium</span>|<span style="color:red">High</span>|<span style="color:orange">3</span>|
+|US10|<span style="color:yellow">Medium</span>|<span style="color:red">High</span>|<span style="color:orange">3</span>|
 |US11|<span style="color:red">High</span>|<span style="color:red">High</span>|<span style="color:red">4</span>|
 |US12|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US13|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
