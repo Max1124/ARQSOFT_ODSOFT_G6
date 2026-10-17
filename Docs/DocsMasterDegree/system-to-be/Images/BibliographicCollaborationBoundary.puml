@@ -1,0 +1,20 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Bibliographic retrieval collaboration boundary
+component "Test inputs\nand assertions" as Test
+rectangle "Declared real collaboration SUT" {
+ component Controller
+ component "Bibliographic service" as Service
+ component "Provider adapter\nand mapper" as Adapter
+ component "Real merge" as Merge
+ Controller --> Service
+ Service --> Adapter
+ Service --> Merge
+}
+component "Local HTTP provider double\n(outside SUT)" as HTTP
+Test --> Controller
+Adapter --> HTTP
+@enduml

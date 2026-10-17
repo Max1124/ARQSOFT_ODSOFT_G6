@@ -1,0 +1,16 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Bibliographic class isolation boundary
+component "AAA test" as Test
+rectangle "Class SUT" {
+ component "Real BibliographicService" as Service
+}
+component "Source doubles\n(outside SUT)" as Sources
+component "Merge double\n(outside SUT)" as Merge
+Test --> Service : inputs / assertions
+Service --> Sources
+Service --> Merge
+@enduml

@@ -1,0 +1,21 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+title Bibliographic retrieval
+actor Librarian
+participant "Book REST API" as API
+participant BibliographicService as Service
+participant GoogleBooksAdapter as Google
+participant OpenLibraryAdapter as Open
+participant BibliographicMerge as Merge
+Librarian -> API : Request metadata by ISBN
+API -> Service : retrieve(isbn)
+Service -> Google : lookupByIsbn(isbn)
+Google --> Service : Normalized data / outcome
+Service -> Open : lookupByIsbn(isbn)
+Open --> Service : Normalized data / outcome
+Service -> Merge : Combine successful results
+Merge --> Service : Combined metadata
+Service --> API : Metadata and source outcomes
+API --> Librarian : Retrieved metadata
+@enduml

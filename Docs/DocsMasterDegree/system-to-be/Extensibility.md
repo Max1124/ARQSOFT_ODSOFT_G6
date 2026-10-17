@@ -71,9 +71,24 @@ The first introduction of the policy contract changes `LendingServiceImpl` once;
 
 ## Step 4 — Choose one or more design concepts that satisfy the inputs of the iteration
 
+### Design alternatives — Iteration 1
+
+Question: where should provider communication and response mapping be placed so that adding a bibliographic source has limited impact on book business logic (QAS1)?
+
+| Alternative | Organization | Benefits | Costs / limitations |
+|---|---|---|---|
+| A — Direct provider integration in the book service | Put provider HTTP calls, response mapping and provider-specific conditions inside `BookServiceImpl`. | Fewer additional types and a simpler initial implementation. | Adding or changing a provider modifies book service logic; provider formats and communication complicate its tests. |
+| B — Common interface, provider adapters and a coordinator | Define `BibliographicSource`; implement one adapter per provider; let `BibliographicService` coordinate the enabled sources through that interface. | Isolates provider differences, limits changes to existing clients when adding a source, and allows controlled source doubles in tests. | Additional interfaces/classes and mapping contracts to maintain; composition and common data contracts need explicit design. |
+
+### Selected alternative — B
+
+Alternative B is the proposed solution because limited-impact source addition is the primary driver (QAS1). A new source implements the common contract and supplies its own communication/mapping; clients should not need new provider-specific conditions. The same boundary supports source selection at setup (QAS4) and controlled tests (QAS9). We accept the additional types and contracts as the trade-off. The existing layered backend is retained; implementation and verification are pending.
+
+The tactics below explain how alternative B achieves these goals. They are complementary parts of that solution, not additional competing alternatives. Step 5 defines its elements and responsibilities; the technical memo records the detailed rationale.
+
 ### Modifiability tactics — Supporting extensibility
 
-The image is a reference catalogue, not a selection of every tactic. Source: the faculty ADD material and the modifiability tactics
+The image is a reference catalogue, not a selection of every tactic. Source: faculty ADD material — Modifiability Tactics.
 
 ![Modifiability tactics catalogue](Images/ModifiabilityTactics.png)
 
@@ -86,7 +101,7 @@ The image is a reference catalogue, not a selection of every tactic. Source: the
 - **Separation of Concerns:** separate retrieval, external mapping, merge and catalogue persistence so that changing a provider does not require changing unrelated responsibilities (QAS1, QAS9).
 - **Defer Binding:** compose the enabled source implementations at setup rather than hard-code the chosen providers in business logic (QAS4). This means setup-time selection, not runtime switching or loading arbitrary new code.
 
-### Other possible tactics
+### Supporting tactics
 
 The following concepts are selected as design proposals from the faculty's Tactics (ii), (iii) and (vi). They support the related interoperability, configuration and testing requirements; they do not imply adopting the complete categories.
 
@@ -106,9 +121,7 @@ The following concepts are selected as design proposals from the faculty's Tacti
 - **Isolation:** test provider mapping and merge independently of catalogue persistence and live external systems (QAS9).
 - **Mocking:** use mocks/stubs to simulate source outcomes and verify enabled-source calls; adapter tests use controlled HTTP responses where needed (QAS9).
 
-These choices are elaborated as responsibilities and decisions in Step 5 and in the technical memo.
-
-**Proposed choice:** retain the layered backend and use a local source port with provider adapters. Direct provider calls in `BookServiceImpl` are simpler initially but force provider-specific changes into business logic. The selected approach adds types/contracts but isolates variation. See the memo for the full rationale.
+These tactics support selected alternative B and are elaborated as responsibilities and decisions in Step 5 and in the technical memo.
 
 #### Selected tactics — Iteration 3
 
@@ -237,16 +250,6 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 |---|---|---|
 |  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
 | Lending policy extensibility — QAS3 | | |
-
-Related concerns: setup-time source selection (QAS4) will be detailed under configurability; test isolation (QAS9) under testability. Partial-data merge (US3) and ISBN-assisted registration (US1) remain functional decisions relevant to this design, not separate extensibility drivers in this board. CON-BIB-3 records the agreed librarian-controlled creation of missing authors/genres; agreeing that constraint does not demonstrate that QAS1 is satisfied.
-
-### Analysis and next verification
-
-- **Iteration goal:** structurally supported by the common port/adapters; QAS1 is not yet verified.
-- **Trade-off:** more types and mapping contracts; changes to common data needs may still change clients.
-- **Extension experiment:** add a third fake source without changing coordinator/merge/existing adapters, permitting composition and new tests. Record actual changes and regression results.
-- **Representative tests:** controlled response mapping, enabled-source calls, agreed merge rules, missing/ambiguous catalogue data, and preservation of manual registration invariants. Use Arrange → Act → Assert.
-- **Remaining work:** refine configuration, isolation, contracts and pending behaviours within iteration 1, then implement adapters/coordinator with tests. Subsequent roadmap iterations address notifications and lending policies.
 
 The reported final coverage goal is at least 85%; metric and measured scope still need confirmation. Coverage alone does not verify extensibility or test quality.
 

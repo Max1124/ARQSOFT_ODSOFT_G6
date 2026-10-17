@@ -1,0 +1,19 @@
+@startuml
+!pragma layout smetana
+skinparam shadowing false
+skinparam backgroundColor white
+title Bibliographic source extension point
+class BibliographicService
+interface BibliographicSource {
+  lookupByIsbn(isbn)
+}
+class BibliographicMerge
+class BibliographicData
+class GoogleBooksAdapter
+class OpenLibraryAdapter
+BibliographicService --> BibliographicSource : uses enabled collection
+BibliographicService --> BibliographicMerge : combines results
+BibliographicSource --> BibliographicData : returns
+GoogleBooksAdapter ..|> BibliographicSource
+OpenLibraryAdapter ..|> BibliographicSource
+@enduml

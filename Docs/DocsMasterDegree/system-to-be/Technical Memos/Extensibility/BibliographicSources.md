@@ -48,7 +48,10 @@ New providers can implement the same contract without provider-specific branches
 
 ## Alternatives
 
-Provider-specific calls inside `BookServiceImpl` need less initial structure but require changing the service for every new source and couple business tests to external formats. The adapter/port alternative is selected as the current proposal because it addresses QAS1/QAS9 while allowing QAS4 composition.
+- **Alternative A — Direct provider integration in the book service:** provider calls, mapping and conditions inside `BookServiceImpl`. Less initial structure, but each new source changes service logic and couples its tests to external formats.
+- **Alternative B — Common interface, provider adapters and a coordinator (selected proposal):** `BibliographicSource`, one adapter per provider and `BibliographicService` coordinating through the contract. Isolates variation and supports QAS1/QAS9 while allowing QAS4 composition, at the cost of more types and maintained contracts.
+
+The explicit comparison and selection appear in Step 4 of [Extensibility.md](../../Extensibility.md). The tactics listed there are complementary mechanisms of B, not competing alternatives.
 
 ## Pending issues
 
