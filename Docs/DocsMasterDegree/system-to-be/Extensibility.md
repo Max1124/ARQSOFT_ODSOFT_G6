@@ -1,6 +1,6 @@
 # ADD — Extensibility
 
-Status: proposed design. The current iteration addresses bibliographic sources; notifications and lending policies are planned, not yet designed or implemented.
+Status: proposed design. Bibliographic sources (iteration 1) and lending policies (iteration 3) are designed; notifications are sketched. Nothing is implemented or verified.
 
 Requirements and scenarios: [ADD.md](ADD.md). Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. The detailed rationale is recorded in the linked technical memo.
 
@@ -290,7 +290,17 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
 |  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
-| Lending policy extensibility — QAS3 | | |
+| | Lending policy extensibility — QAS3: policy contract, selector and history snapshot proposed; renewal calculations depend on open faculty questions; extension impact not yet validated | |
+
+### Analysis — Iteration 3
+
+- **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). QAS3 is not yet verified.
+- **Selection (QAS8):** the selector runs on every new lending and renewal and only chooses a policy; it does not modify existing lendings. Details are in [Configurability.md](Configurability.md) (CFG-LP-01 to CFG-LP-04).
+- **Trade-off:** more types (contract, two policies, parameter objects, decision, selector, rules, history snapshot and provider) and an explicit rule order. If a future policy needs a fact the history snapshot does not provide, the snapshot and its provider change.
+- **Risks:** the four open faculty questions affect Adaptive and renewal calculations, not the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
+- **Extension experiment:** add a fake third policy and selection rule without changing the service, selector or existing policies. Record changed files (expected: new classes, setup registration and new tests only) and regression results.
+- **Representative tests (QAS11):** one passing and one failing case per LP rule with a fixed `Clock` and no Spring or database; LP-SEL1 conditions and boundaries for the selector; `LendingServiceImpl` with a mocked selector and policy. Use Arrange → Act → Assert. Test design is detailed in [Testability.md](Testability.md).
+- **Remaining work:** obtain faculty answers, model renewal on `Lending`, define REST rejection responses, then implement with tests.
 
 The reported final coverage goal is at least 85%; metric and measured scope still need confirmation. Coverage alone does not verify extensibility or test quality.
 
