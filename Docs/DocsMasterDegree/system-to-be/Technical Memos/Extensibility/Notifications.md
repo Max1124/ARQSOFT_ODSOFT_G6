@@ -1,4 +1,4 @@
-# Technical Memo — EXT-BIB-01: Notification extensibility
+# Technical Memo: Notification extensibility
 
 Status: proposed architecture; not implemented or verified.
 
@@ -50,7 +50,6 @@ Method-specific calls inside one single service need less initial structure but 
 ## Pending issues
 
 - Implementing the notification module from scratch.
-- Determining what notification methods to use for now.
 - Establishing failure semantics that are compatible with all notification methods.
 - Actual extension impact and regression results after implementation.
 
