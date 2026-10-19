@@ -1,0 +1,22 @@
+@startuml
+!pragma layout smetana
+allowmixing
+skinparam shadowing false
+skinparam backgroundColor white
+title Bibliographic configuration boundary
+component "External properties" as Properties
+component "Source composition\n(startup)" as Composition
+component "Installed source registry" as Registry
+class BibliographicService
+interface BibliographicSource
+class GoogleBooksAdapter
+class OpenLibraryAdapter
+Properties --> Composition : ordered identifiers
+Composition --> Registry : validate / resolve
+Registry --> BibliographicSource : installed implementations
+Composition --> BibliographicService : inject selected collection
+BibliographicService --> BibliographicSource : lookup on enabled sources
+GoogleBooksAdapter ..|> BibliographicSource
+OpenLibraryAdapter ..|> BibliographicSource
+@enduml
+

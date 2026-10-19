@@ -1,0 +1,36 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+
+title Bibliographic source selection at startup
+
+actor Administrator
+participant "External configuration" as Config
+participant "Source composition" as Composition
+participant "Installed source registry" as Registry
+participant BibliographicService as Service
+
+Administrator -> Config : Set bibliographic.sources before startup
+
+Composition -> Config : Read identifier list
+Config --> Composition : Configured value
+
+Composition -> Composition : Parse and validate list
+Composition -> Registry : Resolve identifiers / validate uniqueness
+Registry --> Composition : Matching sources or validation error
+
+alt Invalid configuration
+  Composition -> Composition : Throw configuration exception
+  note right of Composition
+    Application startup fails.
+    Error is reported in application logs.
+  end note
+else Valid configuration
+  Composition -> Service : Create with ordered selected sources
+  note over Composition,Service
+    No live provider lookup during selection.
+    Configuration changes require a restart.
+  end note
+end
+
+@enduml

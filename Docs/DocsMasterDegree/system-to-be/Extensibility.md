@@ -292,6 +292,15 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 |  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
 | | Lending policy extensibility — QAS3: policy contract, selector and history snapshot proposed; renewal calculations depend on open faculty questions; extension impact not yet validated | |
 
+### Analysis — Iteration 1
+
+- **Iteration goal:** structurally supported by a common source interface and provider adapters (QAS1). Adding a source should require its adapter, registration and tests, while preserving existing adapters and coordinator logic. This remains to be verified.
+- **Trade-off:** additional contracts, mapping and merge responsibilities reduce coupling but increase the initial design and maintenance effort.
+- **Risks:** a provider may need fields or outcomes absent from `BibliographicData`; changing that shared contract can affect consumers and merge rules.
+- **Extension experiment:** add a third fake source and its registration, then enable it through setup configuration. Record changed files and check that the coordinator, existing adapters and book business logic remain unchanged for this example.
+- **Representative tests:** check partial metadata and source outcomes with controlled responses; test merge separately and run relevant registration regression tests (QAS9). See [Testability.md](Testability.md).
+- **Remaining work:** finalize lookup/registration contracts, matching, merge and failure semantics. [Configurability.md](Configurability.md) refines source selection; implementation supplies extension-impact evidence later.
+
 ### Analysis — Iteration 3
 
 - **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). QAS3 is not yet verified.

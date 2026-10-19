@@ -40,7 +40,7 @@ EXT-BIB-02 (agreed with the group): associate existing authors/genre automatical
 
 EXT-BIB-03 (proposed): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Source precedence, conflicts and list handling remain pending.
 
-EXT-BIB-04 (proposed): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; detailed configuration remains to be refined.
+EXT-BIB-04 (proposed): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; the startup composition proposal is detailed in [Configurability.md](../../Configurability.md), with external loading and precedence still pending.
 
 ## Motivation and trade-offs
 
@@ -50,8 +50,6 @@ New providers can implement the same contract without provider-specific branches
 
 - **Alternative A — Direct provider integration in the book service:** provider calls, mapping and conditions inside `BookServiceImpl`. Less initial structure, but each new source changes service logic and couples its tests to external formats.
 - **Alternative B — Common interface, provider adapters and a coordinator (selected proposal):** `BibliographicSource`, one adapter per provider and `BibliographicService` coordinating through the contract. Isolates variation and supports QAS1/QAS9 while allowing QAS4 composition, at the cost of more types and maintained contracts.
-
-The explicit comparison and selection appear in Step 4 of [Extensibility.md](../../Extensibility.md). The tactics listed there are complementary mechanisms of B, not competing alternatives.
 
 ## Pending issues
 

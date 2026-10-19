@@ -1,8 +1,10 @@
 # ADD — Configurability
 
-Status: proposed design. All three iterations (bibliographic sources, notifications, lending policies) are planned and described at design level only. Nothing is implemented.
-
-Requirements and scenarios: [ADD.md](ADD.md). Extensibility design this document builds on: [Extensibility.md](Extensibility.md). Lending rules: *ARQSOFT 2026-2027 Lending Policies Specification v1.0*. Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. Detailed rationale is recorded in the linked technical memos.
+Requirements and scenarios: [ADD.md](ADD.md). 
+Extensibility design this document builds on: [Extensibility.md](Extensibility.md). 
+Lending rules: *ARQSOFT 2026-2027 Lending Policies Specification v1.0*. 
+Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. 
+Detailed rationale is recorded in the linked technical memos.
 
 ## Step 1 — Review inputs
 
@@ -16,8 +18,6 @@ The system must let the choice of bibliographic sources and notification channel
 - Notification channels: which of the installed channels (email, SMS, webhook, later others) are enabled. Chosen at setup. Each reader then chooses among the enabled channels at runtime.
 - Lending policies: which installed policy (Standard, Adaptive, later others) applies to a reader. Chosen automatically at runtime, per reader and per request, from the reader's history (specification section 4).
 - Lending parameter values (`MaxActiveLendings`, `LendingPeriod`, `MaxRenewals`, `RenewalPeriod`, thresholds, periods, `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`): externally configurable at setup (specification section 5). Read at startup and validated against the policy constraints; a change takes effect after one restart.
-
-Retain the existing Java/Spring REST backend and the existing `config/library.properties` mechanism.
 
 ## Step 2 — Establish goals and select inputs to be considered in the iteration
 
@@ -78,7 +78,7 @@ As-is basis:
 
 ### Modifiability tactics — Supporting configurability
 
-The image is a reference catalogue, not a selection of every tactic. Source: the faculty ADD material and the modifiability tactics.
+The image is a reference catalogue, not a selection of every tactic. Source: faculty ADD material — Modifiability Tactics.
 
 ![Modifiability tactics catalogue](Images/ModifiabilityTactics.png)
 
@@ -97,7 +97,7 @@ The image is a reference catalogue, not a selection of every tactic. Source: the
 - **Defer Binding:** the available policies and rules are composed at setup; the policy applied to a request is bound at runtime for that reader (LP-SEL2). This is per-request choice among installed policies, not loading new code.
 - **Restrict Dependencies:** selection rules depend on a read-only history snapshot, not on repositories, HTTP or Spring (QAS11).
 
-### Other possible tactics
+### Supporting tactics
 
 The following concepts are selected as design proposals from the faculty's Tactics (iii) and (vi). They support the configuration and testing requirements; they do not imply adopting the complete categories.
 
@@ -114,15 +114,25 @@ The following concepts are selected as design proposals from the faculty's Tacti
 
 These choices are elaborated as responsibilities and decisions in Step 5.
 
-#### Alternatives — Iterations 1 and 2
+#### Alternatives — Iteration 1
 
 | Alternative | Description | + | − |
 |---|---|---|---|
-| C1 — Names read inside the coordinator/dispatcher | The coordinator reads the property and branches on provider/channel names. | Few types | Every new source or channel changes the coordinator; fails QAS1 and QAS2 |
+| A — Source names read inside the coordinator | The service reads configuration and branches on provider names. | Few types | Couples coordination to configuration and provider names |
+| B — Identifier list bound to injected sources | A composition element selects the configured implementations and injects them into the service at startup. | Service free of provider names and properties; supports one or several sources | A composition element and an identifier convention |
+| C — Enabled sources stored in the database | Selection is edited through an administration API. | Changes without restart | Adds storage and API behaviour beyond setup-time selection |
+
+**Proposed choice:** B. It supports US5/QAS4 by selecting installed sources at startup without changing the service, following EXT-BIB-04.
+
+#### Alternatives — Iteration 2
+
+| Alternative | Description | + | − |
+|---|---|---|---|
+| C1 — Names read inside the coordinator/dispatcher | The dispatcher reads the property and branches on channel names. | Few types | Adding channels requires changes to dispatch logic, increasing extension impact (QAS2) |
 | C2 — Identifier list bound to injected implementations | A property lists enabled identifiers; a composition element injects only the matching implementations. | Coordinator free of names and properties; testable; consistent with the extension design | A composition element and an identifier convention |
 | C3 — Enable flags stored in the database | Editable at runtime through the API. | No restart | The requirement is setup-time selection; adds persistence and authorization concerns; over-engineering |
 
-**Proposed choice:** C2. It is the only alternative that keeps new sources and channels addable without changing the coordinator or dispatcher while selecting them at setup (QAS1, QAS2, QAS4, QAS5).
+**Proposed choice:** C2 for notifications. It applies the same composition principle as bibliographic alternative B to channel selection (QAS2, QAS5).
 
 #### Alternatives — Iteration 3
 
@@ -142,7 +152,8 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | ID | Design decision | Rationale |
 |---|---|---|
 | CFG-BIB-01 | A setup property lists the enabled bibliographic sources by identifier, in order. At startup only the matching `BibliographicSource` implementations are injected into `BibliographicService`. | Enabling Open Library, Google Books or both needs no code change and no recompilation (QAS4); the coordinator contains no provider names (EXT-BIB-04). |
-| CFG-BIB-02 | An unknown source identifier stops startup with a message naming it. Behaviour for an empty list is to be confirmed. | An unknown identifier is a setup error and must not silently reduce the sources consulted. |
+| CFG-BIB-02 | Reject missing/empty source lists, unknown identifiers and duplicate identifiers at startup. Report the invalid selection clearly. | An unknown identifier is a setup error and must not silently reduce the sources consulted. |
+| CFG-BIB-03 | Supply source selection externally and preserve the configured order in an immutable selected collection for the running instance. | Changing selection needs a restart but no rebuild; stable order supports repeatable tests (QAS4, QAS9). Merge conflict rules remain separate. |
 | CFG-NOT-01 | A setup property lists the enabled notification channels by identifier. Only the matching `NotificationService` implementations are registered. | Disabled channels send 0 notifications (QAS5); consistent with EXT-NOT-01 and EXT-NOT-02. |
 | CFG-NOT-02 | Reader notification preferences are validated against the enabled set and stored per reader. A choice that includes a disabled channel is rejected with an error naming the channel. | Readers can only select enabled channels, and other readers are unaffected (QAS6, US8). |
 | CFG-NOT-03 | Dispatch uses the intersection of enabled channels and the reader's chosen channels. | Later notifications follow the reader's current preference without restart (QAS6). |
@@ -161,15 +172,15 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | CON-CFG-3 | Reader channel preferences are runtime data, applied without restart, and limited to enabled channels. | QAS6 |
 | CON-CFG-4 | The applicable lending policy is selected per reader on every new lending and renewal. | LP-SEL2, QAS8 |
 | CON-CFG-5 | Lending parameter values are externally configured at setup and must satisfy the constraints of sections 2–4; invalid values stop startup. | Specification section 5, QAS7 |
-| CON-CFG-6 | Keep the existing Java/Spring backend and the `config/library.properties` mechanism. | Project context and current code |
+| CON-CFG-6 | Keep the existing Java/Spring backend; bibliographic selection must be external to the packaged application. | Project context, US5/QAS4 |
 
 ### Responsibility assignment rationale
 
 | Element | Responsibility / rationale | Properties | Related drivers |
 |---|---|---|---|
 | Setup properties | Hold the enabled source identifiers and enabled channel identifiers; contain no logic. | Setup-time data | CON-CFG-1, CON-CFG-2 |
-| Source composition | Select the matching `BibliographicSource` implementations from the configured list, in order. | Spring configuration; setup-time binding | QAS4 |
-| `BibliographicService` | Consult the injected collection, without provider names or property access. | Existing coordinator (see Extensibility) | QAS4 |
+| Source composition | Validate the configured identifiers and select the matching installed sources in order. | Setup-time binding; no provider lookup | QAS4, CFG-BIB-01–03 |
+| `BibliographicService` | Consult the injected sources through `BibliographicSource`, without reading configuration. | Coordinator proposed in Extensibility | QAS4, QAS9 |
 | Channel composition | Register only the matching `NotificationService` implementations. | Spring configuration; setup-time binding | QAS5 |
 | Reader preference validation | Compare the channels a reader chooses with the enabled set and store them. | Application rule on the reader module | QAS6 |
 | Notification dispatch | Send through enabled channels the reader has chosen. | Application service | QAS5, QAS6 |
@@ -185,7 +196,7 @@ Names are proposed, not existing classes.
 
 | Boundary | Input | Output / obligation |
 |---|---|---|
-| Setup properties → source composition | List of source identifiers | Exactly the matching implementations in order; unknown identifier fails startup |
+| Setup properties → source composition | Ordered source identifiers | Matching sources in order; invalid selection fails startup (CFG-BIB-02); changes apply after restart |
 | Setup properties → channel composition | List of channel identifiers | Exactly the matching implementations; disabled channels are not loaded and send 0 notifications |
 | Reader preferences | Channels chosen by a reader | Stored if all are enabled; otherwise rejected, naming the channel; other readers unaffected |
 | Setup properties → lending parameter binding | Standard, Adaptive and selection parameter values | Validated immutable parameter objects; any constraint violation fails startup naming the parameter |
@@ -194,16 +205,24 @@ Names are proposed, not existing classes.
 
 ### Technical memos
 
-[Extensibility — Bibliographic sources](Technical%20Memos/Extensibility/BibliographicSources.md)
-
-[Extensibility — Notification methods](Technical%20Memos/Extensibility/Notifications.md)
-
-[Extensibility — Lending policies](Technical%20Memos/Extensibility/LendingPolicies.md)
+[Configurability — Bibliographic sources](Technical%20Memos/Configurability/BibliographicSources.md)
 
 [Configurability — Lending policies](Technical%20Memos/Configurability/LendingPolicies.md)
 
 
 ## Step 6 — Sketch views and record decisions
+
+### Sequence sketch — Bibliographic source selection at startup
+
+![Bibliographic source configuration sequence](Images/BibliographicConfigurationSequence.png)
+
+Selection is resolved once at startup. Invalid configuration stops initialization; valid configuration supplies the ordered sources to the coordinator. No provider lookup is needed during selection.
+
+### Structural sketch — Bibliographic configuration boundary
+
+![Bibliographic configuration structure](Images/BibliographicConfigurationStructure.png)
+
+The composition element connects external configuration to installed implementations. The service depends only on the source contract and its selected collection. The sketches describe the proposed design, not implemented classes.
 
 ### Sequence sketch — Lending parameter binding at startup
 
@@ -216,7 +235,7 @@ At startup the binding reads the lending properties and builds the three paramet
 
 - Property names, file location and environment-variable precedence (including the lending parameter keys).
 - Reuse or replacement of the existing `lendingDurationInDays` key; unit of `MinOnTimeRatio` in configuration.
-- Behaviour when no bibliographic source or no notification channel is enabled.
+- Review the proposed rejection of an empty bibliographic source list; behaviour when no notification channel is enabled remains open.
 - Source of the webhook target.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
@@ -225,20 +244,27 @@ At startup the binding reads the lending properties and builds the three paramet
 
 This board evaluates the configurability drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution. No driver is marked addressed; implementation and verification are also pending.
 
-| Not addressed | Partially addressed | Addressed in the design |
-|---|---|---|
-| Bibliographic source selection — QAS4: identifier list and composition proposed; property format and failure behaviour still need refinement | | |
-| Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement | | |
-| | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup and per-request selector proposed; property names and cases affected by open faculty questions still pending | |
+| Not addressed                                                                                                                                                                             | Partially addressed | Addressed in the design |
+|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
+|                                                                                                                                                                                           | Bibliographic source selection — QAS4: external property, validation, ordered composition and diagrams specified; configuration loading/precedence and executable examples remain pending | |
+| Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement  | | |
+|                                                                                                                                                                                           | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup and per-request selector proposed; property names and cases affected by open faculty questions still pending | |
 
 Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) is detailed in [Testability.md](Testability.md).
 
-### Analysis and next verification
+### Analysis — Iteration 1
 
-- **Iteration goals:** structurally supported by setup-time composition (iterations 1 and 2) and a per-request selector (iteration 3); none is verified.
+- **Iteration goal:** source selection is supported by external configuration and startup composition (QAS4); implementation is pending.
+- **Trade-off:** a composition element and identifier validation; changing the selection requires a restart.
+- **Verification:** enable Google Books, Open Library and both; confirm that only enabled sources are queried. Change configuration using the same application artifact and verify the effect after restart. Check invalid identifiers and lists with controlled providers.
+- **Remaining work:** finalize property names, external loading and precedence, and confirm the proposed validation rules. No test results are claimed.
+
+### Analysis and next verification — Iterations 2 and 3
+
+- **Iteration goals:** structurally supported by channel composition (iteration 2) and parameter binding/per-request selection (iteration 3); none is verified.
 - **Trade-off:** a composition element and fail-fast startup for setup choices; selection adds rule types and an explicit rule order. Changes to the enabled sources or channels need a restart, which matches the scenarios.
 - **Experiments:**
-    - Enable each combination of sources and channels (single, several) and confirm the effect after one restart with no code change.
+    - Enable each combination of channels (single, several) and confirm the effect after one restart with no code change.
     - Supply an unknown identifier and confirm startup fails with a message naming it.
     - Change a lending parameter (e.g. `LendingPeriod` 15 → 21) and confirm new lendings use it after one restart with no code change; supply `FirstThreshold >= SecondThreshold` and confirm startup fails naming the constraint.
     - Change a reader's channels to include a disabled one and confirm rejection naming the channel.
