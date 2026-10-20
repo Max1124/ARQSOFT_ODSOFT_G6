@@ -207,6 +207,8 @@ Names are proposed, not existing classes.
 
 [Configurability — Bibliographic sources](Technical%20Memos/Configurability/BibliographicSources.md)
 
+[Configurability — Notification Methods](Technical%20Memos/Configurability/NotificationMethods.md)
+
 [Configurability — Lending policies](Technical%20Memos/Configurability/LendingPolicies.md)
 
 
@@ -223,6 +225,19 @@ Selection is resolved once at startup. Invalid configuration stops initializatio
 ![Bibliographic configuration structure](Images/BibliographicConfigurationStructure.png)
 
 The composition element connects external configuration to installed implementations. The service depends only on the source contract and its selected collection. The sketches describe the proposed design, not implemented classes.
+
+### Sequence sketch — Notification method selection at startup
+
+![Notification method configuration sequence](Images/NotificationMethodsConfigurationSequence.png)
+
+Selection is resolved once at startup. Invalid configuration stops initialization; valid configuration supplies the ordered sources to the coordinator.
+
+### Structural sketch — Notification method boundary
+
+![Notification method structure](Images/NotificationMethodsConfigurationStructure.png)
+
+The composition element connects external configuration to installed implementations. The service depends only on the source contract and its selected collection. The sketches describe the proposed design, not implemented classes.
+
 
 ### Sequence sketch — Lending parameter binding at startup
 
@@ -247,7 +262,7 @@ This board evaluates the configurability drivers at design level. Not addressed 
 | Not addressed                                                                                                                                                                             | Partially addressed | Addressed in the design |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
 |                                                                                                                                                                                           | Bibliographic source selection — QAS4: external property, validation, ordered composition and diagrams specified; configuration loading/precedence and executable examples remain pending | |
-| Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement  | | |
+|                                                                                                                                                                                           | Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement  | |
 |                                                                                                                                                                                           | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup and per-request selector proposed; property names and cases affected by open faculty questions still pending | |
 
 Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) is detailed in [Testability.md](Testability.md).

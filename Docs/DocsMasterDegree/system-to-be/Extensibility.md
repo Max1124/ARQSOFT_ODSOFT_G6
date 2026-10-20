@@ -241,7 +241,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 [Extensibility — Bibliographic sources](Technical%20Memos/Extensibility/BibliographicSources.md)
 
-[Extensibility — Notification Methods](Technical%20Memos/Extensibility/Notifications.md)
+[Extensibility — Notification Methods](Technical%20Memos/Extensibility/NotificationMethods.md)
 
 [Extensibility — Lending policies](Technical%20Memos/Extensibility/LendingPolicies.md)
 
@@ -259,11 +259,11 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ### Sequence sketch — Notification methods information
 
-![Notification methods sequence](Images/NotificationSequence.png)
+![Notification methods sequence](Images/NotificationMethodsExtensibilitySequence.png)
 
 ### Structural sketch — Notification methods
 
-![Notification methods structure](Images/NotificationStructure.png)
+![Notification methods structure](Images/NotificationMethodsExtensibilityStructure.png)
 
 **Pending decisions:** more notification methods to add; notification method failure behavior.
 

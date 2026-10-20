@@ -2,7 +2,7 @@
 
 Status: proposed architecture; not implemented or verified.
 
-Related iteration: [Configurability, iteration 1](../../Configurability.md). Drivers: QAS5, US8, US9 . Faculty basis: Project 1 section 1.3.3.1 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
+Related iteration: [Configurability, iteration 2](../../Configurability.md). Drivers: QAS5, US8, US9 . Faculty basis: Project 1 section 1.3.3.1 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
 
 ## Issue
 

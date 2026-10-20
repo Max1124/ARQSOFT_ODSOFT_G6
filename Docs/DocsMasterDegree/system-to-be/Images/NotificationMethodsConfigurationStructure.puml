@@ -1,0 +1,35 @@
+@startuml
+!pragma layout smetana
+allowmixing
+skinparam shadowing false
+skinparam backgroundColor white
+title Notification configuration boundary
+
+component "External properties" as Properties
+component "Channel composition\n(startup)" as Composition
+component "Installed channel registry" as Registry
+
+class LendingServiceImpl
+interface INotificationService
+class SMSNotificationService
+class EmailNotificationService
+class WebhookNotificationService
+
+Properties --> Composition : enabled channel identifiers
+Composition --> Registry : validate / resolve
+
+Registry --> SMSNotificationService : installed
+Registry --> EmailNotificationService : installed
+Registry --> WebhookNotificationService : installed
+
+Composition ..> SMSNotificationService : instantiates if enabled
+Composition ..> EmailNotificationService : instantiates if enabled
+Composition ..> WebhookNotificationService : instantiates if enabled
+
+Composition --> LendingServiceImpl : inject enabled instances\n(as INotificationService)
+LendingServiceImpl --> INotificationService : notify on enabled channels\nchosen by the reader
+
+SMSNotificationService ..|> INotificationService
+EmailNotificationService ..|> INotificationService
+WebhookNotificationService ..|> INotificationService
+@enduml

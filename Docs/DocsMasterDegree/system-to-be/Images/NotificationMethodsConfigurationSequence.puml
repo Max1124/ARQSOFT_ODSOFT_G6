@@ -1,0 +1,50 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+
+title Notification method selection at startup
+
+actor Administrator
+participant "External configuration" as Config
+participant "Channel composition" as Composition
+participant "Installed channel registry" as Registry
+participant SMSNotificationService as SMS
+participant EmailNotificationService as Email
+participant WebhookNotificationService as Webhook
+participant LendingServiceImpl as Lending
+
+Administrator -> Config : Set enabled notification channels\n(by identifier) before startup
+
+Composition -> Config : Read channel identifier list
+Config --> Composition : Configured value
+
+Composition -> Composition : Parse and validate list
+Composition -> Registry : Resolve identifiers / validate uniqueness
+Registry --> Composition : Matching implementations\nor validation error
+
+alt Invalid configuration
+  Composition -> Composition : Throw configuration exception
+  note right of Composition
+    Application startup fails.
+    Error is reported in application logs.
+  end note
+else Valid configuration
+  opt SMS channel enabled
+    Composition -> SMS ** : new SMSNotificationService
+  end
+  opt Email channel enabled
+    Composition -> Email ** : new EmailNotificationService
+  end
+  opt Webhook channel enabled
+    Composition -> Webhook ** : new WebhookNotificationService
+  end
+  Composition -> Lending : Inject enabled instances\n(typed as INotificationService)
+  note over Composition,Lending
+    Only enabled implementations are instantiated;
+    disabled channels send 0 notifications.
+    LendingServiceImpl depends only on INotificationService.
+    Configuration changes require a restart.
+  end note
+end
+
+@enduml
