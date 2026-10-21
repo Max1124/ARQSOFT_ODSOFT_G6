@@ -6,17 +6,7 @@ Requirements and scenarios: ADD.md. Organization follows the faculty material So
 
 ### Requirement
 
-ProjectStatement.pdf, section 1.3.3.4, requires:
-
-- Functional opaque-box tests with SUT = classes;
-- Functional transparent-box tests with SUT = domain classes;
-- Mutation tests with SUT = classes;
-- Opaque-box tests with SUT = controller + service + {domain, repository, gateways};
-- Opaque-box tests with SUT = system.
-
-Tests should primarily cover new functionality and prioritize quality and representativeness.
-
-For bibliographic information, QAS9 requires controlled source responses, isolated mapping/merge tests and no real external calls. US1/US3 concern ISBN-assisted registration and combining partial information; US5/QAS4 require selecting sources at setup.
+For bibliographic information, QAS9 requires controlled source responses and independently testable mapping and merge behaviour, without live provider calls. The design must allow behavioural dependencies to be replaced so coordination, communication and transformation can be tested separately. US1/US3 concern ISBN-assisted registration and combining partial data; US5/QAS4 concern setup-time source selection. The source interface and catalogue rules in [Extensibility.md](Extensibility.md), together with the agreed lookup outcomes in the [bibliographic testability memo](Technical%20Memos/Testability/BibliographicSources.md), define the expected behaviour.
 
 For notification methods, QAS10 requires channels to be replaced by test doubles that record the calls, so that tests assert which channels were used, for which reader and with what content, with 0 real messages sent and at least 80% branch coverage on the dispatcher and channel selection logic. US6/US7 define the due-date and overdue/fine events, US8 the reader's choice of several channels and US9 the setup-time selection of enabled channels; rules EXT-NOT-01 to EXT-NOT-04 in [Extensibility.md](Extensibility.md) and CFG-NOT-01 to CFG-NOT-03 in [Configurability.md](Configurability.md) define the expected behaviour. US8 remains proposed scope.
 
@@ -26,7 +16,8 @@ For lending policies, QAS11 requires each policy rule, the parameter constraints
 
 - `BookServiceImpl.create` resolves authors/genre, constructs a real `Book` and saves it through the repository. No `BookServiceImplTest` was found in the current test tree. Future tests must explicitly define which collaborators are real and which are replaced before claiming a single-class SUT.
 - The bibliographic contract, coordinator, adapters and merge are design proposals, not implemented classes in the current source tree.
-- Current `AuthorTest` constructs `Author`, which creates `Name`, `Bio` and photo-related objects internally. Under the single-class SUT criterion reported from class, these real collaborations must be distinguished from isolated class tests. A test of `EntityWithPhoto` is also located in that test class.
+- `Author` constructs `Name` and `Bio` internally. Under the classroom single-class SUT convention, tests exercising this construction include real collaborators. This observation motivates explicit dependencies, but the proposed bibliographic design does not require changing the `Author` constructor.
+- `AuthorViewMapper` is used by the controller to build API views and HTTP links. This placement matches its responsibility and is not itself a testability defect. No relocation of existing REST mappers is required by this bibliographic iteration; provider response mapping is handled separately beside the external adapters.
 - Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule and the reader preference storage are design proposals, not implemented classes. Real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. How a due-date or overdue event is detected and triggered, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values.
 - Some existing tests start Spring and replace repositories with mocks. An annotation or test name does not determine the SUT. Their actual real collaborators and assertions must be inspected.
 - Lending: the current structure, not the lack of test cases, is what prevents testing the lending rules in isolation (analysed per element in Step 3, Iteration 3). "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the numeric limit (3) and the overdue rule sit inside `LendingServiceImpl.create`, interleaved with repository access; configuration enters through `@Value` fields. The only service-level and repository-level lending tests (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`) are `@SpringBootTest` tests with real repositories, so the lending package has integration tests but no class-level test of the service or of any rule. The policy contract, selector, history snapshot and parameter objects are design proposals, not implemented classes.
@@ -51,11 +42,11 @@ The roadmap groups testing-related architectural concerns, not test counts. Lend
 
 ### Iteration 1 — Bibliographic information
 
-Primary driver: QAS9. Goal: specify observable contracts and replaceable dependencies so class tests can precede tests of real collaboration, followed by system tests. Preserve the source interface and catalogue rules agreed in extensibility.
+QAS9 is the main requirement guiding the design choices in this iteration. Goal: separate coordination, provider communication, mapping and merge, and receive their behavioural dependencies through constructors. Preserve the source interface and catalogue rules agreed in extensibility.
 
 ### Iteration 2 — Notification methods
 
-Primary driver: QAS10. Related drivers: QAS2 (adding a channel), QAS5 (setup-time channel selection), QAS6 (reader preferences). Goal: make it possible to verify that a reader is notified through exactly the channels that are enabled and chosen, with the right content, without sending any real message. Class tests of each channel and of the dispatch rule come first, then real collaboration with the lending workflow, then the running system. Preserve the `NotificationService` contract and `ReaderRepository` access agreed in [Extensibility.md](Extensibility.md) and the enabled-set, preference and intersection rules agreed in [Configurability.md](Configurability.md).
+QAS10 is the main requirement guiding the design choices in this iteration. Related drivers: QAS2 (adding a channel), QAS5 (setup-time channel selection), QAS6 (reader preferences). Goal: make it possible to verify that a reader is notified through exactly the channels that are enabled and chosen, with the right content, without sending any real message. Class tests of each channel and of the dispatch rule come first, then real collaboration with the lending workflow, then the running system. Preserve the `NotificationService` contract and `ReaderRepository` access agreed in [Extensibility.md](Extensibility.md) and the enabled-set, preference and intersection rules agreed in [Configurability.md](Configurability.md).
 
 Selection rationale: the tests must show that a reader receives a due-date or overdue notification through every channel that is both enabled and chosen, and through no other, with the correct recipient and content. They must also show that a choice including a disabled channel is rejected and that one reader's preference does not affect another's. All of this is checked by recording the calls made to replaced channels, so no real message is sent.
 
@@ -109,20 +100,14 @@ Testability is analysed as controllability (can a test put the element in a know
 
 ### Design alternatives — Iteration 1
 
-Question: how can we control provider communication when testing each bibliographic adapter independently (QAS9)? Both alternatives retain the required class, collaboration, domain, mutation and system test categories.
+Question: how can bibliographic dependencies be made replaceable for isolated testing (QAS9)? These alternatives concern the proposed bibliographic design.
 
-| Alternative | Organization | Benefits | Costs / limitations |
+| Alternative | Description | Benefits | Costs / limitations |
 |---|---|---|---|
-| A — Inject the HTTP client's existing contract | Supply the selected HTTP client to the adapter and replace it in isolated tests. | Fewer application abstractions; uses an existing client API. | Tests may depend on client-specific call chains; changing clients can affect adapters and tests. Feasibility depends on the client chosen. |
-| B — Inject a small application-owned transport contract | Give adapters a narrow request/response transport interface; a production implementation uses the HTTP client. Tests substitute that interface. | Simple controlled responses/errors; isolates adapter tests from HTTP-client details. | One extra interface and implementation; real transport integration still needs testing. |
+| A — Create collaborators internally | The coordinator constructs sources/merge; adapters construct transport and mapping dependencies. | Less startup composition | Tests cannot easily replace dependencies; construction and behaviour are coupled |
+| B — Receive collaborators through constructors | Setup composes objects; the service receives sources/merge and adapters receive transport and their provider mapper. | Explicit dependencies and independent control of responsibilities | More composition and contracts; real collaboration still needs testing |
 
-### Selected alternative — B
-
-B is the proposed design: a small shared transport contract makes provider responses and failures easy to control without exposing HTTP-client details in adapter class tests. The cost is an additional boundary to maintain. Keep it limited to the operations actually needed; its exact signature and HTTP client remain pending.
-
-Test each adapter with a transport double and controlled mapping collaborators where applicable. Then test the real adapter, mapper and transport together against a local HTTP provider double. Test the running API separately. Source and merge dependencies of the coordinator are also injected, as already proposed in extensibility. Neither alternative removes required testing categories or replaces the real SUT with a mock.
-
-The tactics below support B and the broader test-boundary design. They work together; they are not additional competing alternatives.
+**Proposed choice:** B. Reuse `BibliographicSource`, extract provider mapping into dedicated classes, and use a narrow `BibliographicTransport` contract implemented by an HTTP transport. Keep merge independent of HTTP and persistence. Constructor injection allows replacing collaborators without mocking the SUT.
 
 ### Testability tactics — Supporting bibliographic testing
 
@@ -213,11 +198,11 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 
 | ID | Design decision | Rationale |
 |---|---|---|
-| TST-BIB-01 | Declare the SUT and real/replaced collaborators for every test group. | Prevent class tests from silently becoming real multi-class tests; follow the classroom convention. |
-| TST-BIB-02 | Inject sources and merge; give provider adapters a narrow application-owned transport contract and controlled mapping collaborators where applicable. | Control responses/errors without coupling isolated adapter tests to HTTP-client internals (QAS9). Test the real transport separately and with adapters. |
-| TST-BIB-03 | Use fixed provider-response fixtures and observable normalized results/outcomes. | Reproduce partial/invalid responses and verify mapping without relying on changing remote data. |
-| TST-BIB-04 | Separate class, collaboration and system test groups; exercise the real production composition in broader tests. | Isolation alone cannot reveal wiring or contract incompatibilities (section 1.3.3.4). |
-| TST-BIB-05 | Design representative cases with AAA and meaningful assertions, then analyse coverage and mutants. | Detect wrong behaviour rather than merely execute lines or count tests. |
+| TST-BIB-01 | Receive sources and merge through the coordinator constructor; compose them at setup. | Separate construction from coordination and allow controlled collaborators (QAS9). |
+| TST-BIB-02 | Each adapter receives a BibliographicTransport and its provider mapper through its constructor. | Control transport failures and mapping independently; keep the adapter real (QAS9). |
+| TST-BIB-03 | Extract GoogleBooksMapper and OpenLibraryMapper to transform responses into partial BibliographicData. | Mapping executes without HTTP, Spring startup or persistence (QAS9). |
+| TST-BIB-04 | Keep BibliographicMerge separate from lookup and catalogue persistence. | Combination rules can be tested using fixed data (US3, QAS9). |
+| TST-BIB-05 | Keep REST view mapping at the API boundary and provider response mapping beside adapters. | Avoid coupling provider transformations to HTTP request context. |
 | TST-NOT-01 | Consumers of notifications depend only on `NotificationService`; tests inject a recording double that stores reader, channel and content. | Observe who was notified without real delivery; follows EXT-NOT-03 (QAS10). |
 | TST-NOT-02 | Give each channel implementation an injectable delivery boundary (mail, SMS or HTTP client) and its `ReaderRepository`; test each as a single-class SUT with those replaced. | Message building and contact lookup are verified without sending anything (QAS10, EXT-NOT-04). |
 | TST-NOT-03 | Test channel composition with test properties: only listed identifiers are registered; empty or unknown identifiers behave as agreed. | Disabled channels send 0 notifications (QAS5, CFG-NOT-01). |
@@ -250,13 +235,17 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | CON-TST-10 | A collaboration or system test is not written, and does not count as evidence, for a component whose included production classes lack passing class-level tests. Class tests precede integration tests in each iteration. | Reported colleague guidance; unit-versus-integration material |
 | CON-TST-11 | Every seam introduced for testability (clock, parameter objects, port, decision type) must also serve the production design; no test-only methods or flags in production code, and no loosening of `Lending` invariants. | CON-TST-5, CON-LP-1 |
 
+### Source lookup outcomes — Agreed behaviour
+
+Each source distinguishes Found, NotFound and Failure. Successful data remains usable when another source fails, with an incomplete-lookup warning. See the [technical memo](Technical%20Memos/Testability/BibliographicSources.md) for the complete agreed rules; the planned cases below verify this behaviour.
+
 ### Responsibility assignment rationale
 
 | Element | Responsibility / rationale | Properties | Related drivers |
 |---|---|---|---|
 | `BibliographicService` | Coordinate enabled sources and merge through replaceable contracts. | Single real coordinator in isolated tests | QAS9, CON-TST-4 |
-| Provider adapter | Convert the lookup operation into a provider interaction and use controlled mapping/transport. | Adapter; exact collaborators to finalize | QAS9, CON-TST-2 |
-| Provider mapper, if extracted | Translate provider fields to normalized partial metadata. | Test separately before adapter + mapper integration | QAS9, CON-TST-4 |
+| Provider adapter | Convert the lookup operation into a provider interaction and delegate communication and mapping to injected collaborators. | Injected transport and provider mapper | QAS9, CON-TST-2 |
+| Provider mappers | Translate provider fields to normalized partial metadata. | Test separately before adapter + mapper integration | QAS9, CON-TST-4 |
 | `BibliographicMerge` | Apply agreed data precedence/combination without HTTP/persistence. | Deterministic class SUT | US3, QAS9 |
 | Test fixtures and doubles | Supply explicit inputs and record relevant interactions. | Test-only code; no substitute for exercising the real SUT | CON-TST-2, CON-TST-4 |
 | Registration domain classes | Enforce the rules assigned to each domain class. | Transparent-box candidates where actually affected | CON-TST-1, CON-TST-3 |
@@ -376,7 +365,9 @@ Bibliographic infrastructure is not domain merely because it contains branches. 
 | Enabled sources only | Coordinator / class | Prepare source doubles and merge double → retrieve ISBN → assert the specified result, calls to enabled sources and no calls to disabled sources. |
 | Partial response | Provider mapper / class | Supply a fixed response missing optional fields → map → assert exact available/missing values and provenance. |
 | Data combination | Merge / class | Prepare partial normalized inputs → combine → assert field selection after precedence/list rules are agreed. |
-| No match versus failure | Adapter/coordinator / separate class tests | Supply controlled no-match/error outcomes → execute → assert their distinct agreed contracts. |
+| No match versus failure | Adapter/coordinator / separate class tests | Supply a successful lookup with no match, then a non-response/invalid response → execute → assert NotFound and Failure respectively. Verify combined outcomes separately in coordinator tests. |
+| Partial lookup success | Coordinator / class | Source doubles return Found and Failure; merge double returns known data → retrieve → assert returned data and a warning identifying the failed source. |
+| No successful match | Coordinator / class | All sources return NotFound, then repeat with NotFound and Failure → retrieve → assert no-match in the first case and incomplete lookup in the second. |
 | Missing catalogue association | Registration collaboration | Provide metadata without a required association → submit → assert completion/error response and no book/author/genre created implicitly. |
 | Complete registration | Registration collaboration/system | Prepare valid data, existing associations and controlled provider responses → submit → assert persisted book and API result; no extra completion when unambiguous. |
 
@@ -396,16 +387,9 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 
 ## Step 6 — Sketch views and record decisions
 
-### Bibliographic Source isolation boundary
+### Class diagram — Bibliographic architectural changes
 
-![Bibliographic class isolation boundary](Images/BibliographicClassIsolation.png)
-
-### Bibliographic Source boundary
-
-![Bibliographic collaboration boundary](Images/BibliographicCollaborationBoundary.png)
-
-The second sketch concerns retrieval; registration suites extend the declared SUT with the relevant domain and repository components. System tests invoke a running backend via HTTP instead of invoking the controller directly. These are test-boundary sketches, not replacements for full implementation views.
-
+![Bibliographic testability class design](Images/BibliographicTestabilityClasses.png)
 
 ### Notification Method isolation boundary
 
@@ -442,9 +426,16 @@ The columns are independent status lists: cells on the same row are not related.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
-| | Bibliographic isolation — QAS9: SUT boundaries, tactics and test categories proposed; concrete contracts, fixture examples and expected results still need refinement |  |
+| | Bibliographic isolation — QAS9: constructor injection, separated mapping/merge and transport contract proposed; source outcomes agreed in the memo; exact signatures, field merge rules and REST representation remain pending |  |
 | | Notification testability — QAS10: recording doubles, delivery boundary, SUT boundaries, test categories and AAA cases proposed; dispatch location, event trigger, failure behaviour and boundary sketches still pending | |
 | | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service), bottom-up test order and SUT boundaries decided; nothing implemented; fixture formats still pending | |
+
+### Analysis — Iteration 1
+
+- **Goal:** structurally supported by explicit dependencies and separated responsibilities; the class diagram records the proposed changes.
+- **Trade-off:** more composition and maintained collaborator contracts. Isolated tests cannot prove real wiring is correct.
+- **Verification:** construct the service and adapters with controlled collaborators; test mappers and merge with fixed data, then combine real implementations with a local provider double. Record the real production classes in each SUT.
+- **Pending:** exact transport/data contracts, field merge rules, REST representation and affected registration-domain scope. No implementation or passing tests are claimed.
 
 ## Step 8 — Refine as necessary
 
