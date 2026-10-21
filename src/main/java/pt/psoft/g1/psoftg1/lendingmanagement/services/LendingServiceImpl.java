@@ -11,6 +11,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.model.Fine;
 import pt.psoft.g1.psoftg1.lendingmanagement.model.Lending;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.FineRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.StandardPolicyParameters;
 import pt.psoft.g1.psoftg1.readermanagement.repositories.ReaderRepository;
 import pt.psoft.g1.psoftg1.shared.services.Page;
 
@@ -31,8 +32,8 @@ public class LendingServiceImpl implements LendingService{
     private final ReaderRepository readerRepository;
     private final Clock clock; // single time source, so tests can inject a fixed clock (QAS11)
 
-    @Value("${lendingDurationInDays}")
-    private int lendingDurationInDays;
+    private final StandardPolicyParameters standardPolicyParameters; // limit and period now come from validated setup configuration (spec 5, QAS7)
+
     @Value("${fineValuePerDayInCents}")
     private int fineValuePerDayInCents;
 
@@ -69,9 +70,10 @@ public class LendingServiceImpl implements LendingService{
                 throw new LendingForbiddenException("Reader has book(s) past their due date");
             }
             count++;
-            //Business rule: cannot create a lending if user already has 3 outstanding books to return.
-            if (count >= 3) {
-                throw new LendingForbiddenException("Reader has three books outstanding already");
+            //Business rule: cannot create a lending if user already has the maximum of outstanding books to return.
+            // The limit was the literal 3; it is now the configurable MaxActiveLendings (spec 2.1).
+            if (count >= standardPolicyParameters.maxActiveLendings()) {
+                throw new LendingForbiddenException("Reader has " + count + " books outstanding already");
             }
         }
 
@@ -80,7 +82,7 @@ public class LendingServiceImpl implements LendingService{
         final var r = readerRepository.findByReaderNumber(resource.getReaderNumber())
                 .orElseThrow(() -> new NotFoundException("Reader not found"));
         int seq = lendingRepository.getCountFromCurrentYear()+1;
-        final Lending l = new Lending(b,r,seq, lendingDurationInDays, fineValuePerDayInCents, today);
+        final Lending l = new Lending(b,r,seq, standardPolicyParameters.lendingPeriodDays(), fineValuePerDayInCents, today);
 
         return lendingRepository.save(l);
     }
