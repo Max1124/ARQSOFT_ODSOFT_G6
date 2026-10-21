@@ -1,0 +1,28 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Notification Methods retrieval collaboration boundary
+component "Test inputs\nand assertions" as Test
+rectangle "Declared real collaboration SUT" {
+ component Controller
+component "Notification Service" as Service
+component "Sending Notification" as Mechanism
+ Controller --> Service
+ Service --> Mechanism
+}
+Test --> Controller
+
+
+note bottom of Service
+  "Notification Service" in this graph is a stand-in
+  for the different implementations of
+  INotificationService that will need their
+  specific behaviour tested.
+end note
+
+note bottom of Mechanism
+  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https))
+end note
+@enduml

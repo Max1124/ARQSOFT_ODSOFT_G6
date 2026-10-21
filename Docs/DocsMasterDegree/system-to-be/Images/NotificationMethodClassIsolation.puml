@@ -1,0 +1,26 @@
+@startuml
+!pragma layout smetana
+left to right direction
+skinparam shadowing false
+skinparam backgroundColor white
+title Notification Methods class isolation boundary
+component "AAA test" as Test
+rectangle "Class SUT" {
+ component "Real Notification Service" as Service
+}
+component "Sending Notification" as Mechanism
+Test --> Service : inputs / assertions
+Service --> Mechanism
+
+
+note bottom of Service
+  "Notification Service" in this graph is a stand-in
+  for the different implementations of
+  INotificationService that will need their
+  specific behaviour tested.
+end note
+
+note bottom of Mechanism
+  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https))
+end note
+@enduml

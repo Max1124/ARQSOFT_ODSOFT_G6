@@ -16,7 +16,7 @@ The system must support new bibliographic sources, notification channels and len
 - Notification channels: email, SMS and webhook now; additional channels later.
 - Lending policies: Standard and Adaptive now; additional policies later.
 
-Retain the existing Java/Spring REST backend. Lending parameters are externally configurable at setup (specification section 5, detailed in [Configurability.md](Configurability.md)); automatic policy selection remains included pending faculty confirmation.
+Retain the existing Java/Spring REST backend. Lending parameters are externally configurable at setup (specification section 5, detailed in [Configurability.md](Configurability.md)); automatic policy selection (specification section 4) is included.
 
 ## Step 2 — Establish goals and select inputs to be considered in the iteration
 
@@ -189,7 +189,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | CON-NOT-5 | Keep mechanism-specific dependencies (SMS, email and webhook clients) outside `LendingServiceImpl` and the domain. | Proposed architectural boundary supporting QAS2 |
 | CON-LP-1 | Keep the existing backend and valid `Lending` invariants (dates, lending number, fines). | Project context and current code |
 | CON-LP-2 | Lending parameter values come from external setup configuration and must satisfy the policy constraints; invalid values stop startup. | Specification section 5, QAS7 |
-| CON-LP-3 | Do not assume answers to the open faculty questions; calculations affected by them remain pending. | ADD.md, pending questions |
+| CON-LP-3 | Behaviour the specification leaves open (Adaptive renewal, history window) is decided in the design and isolated in one element, so it can change in one place. | Design decision |
 | CON-LP-4 | Keep policies and selection rules free of Spring, persistence and the system clock. | Proposed architectural boundary supporting QAS3/QAS11 |
 
 ### Responsibility assignment rationale
@@ -235,13 +235,13 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 | Lending history | Reader number and current date from the injected `Clock` | Read-only `ReaderLendingHistory`; no writes |
 | Policy selection | `ReaderLendingHistory` | Applicable `LendingPolicy`; Standard when no rule matches; no changes to existing lendings |
 | Policy — new lending | `ReaderLendingHistory` | `PolicyDecision`: allowed with duration in days, or rejected with a reason; no persistence |
-| Policy — renewal | Lending to renew and `ReaderLendingHistory` | `PolicyDecision`: allowed with extension, or rejected with a reason; Adaptive renewal calculation pending faculty answer |
+| Policy — renewal | Lending to renew and `ReaderLendingHistory` | `PolicyDecision`: allowed with extension, or rejected with a reason; Adaptive renewal extends the limit date by the Adaptive period for the current active count |
 | Lending service | New lending or renewal request | Saved `Lending` with its limit date taken from the decision, or a rejection carrying the decision reason |
 ### Technical Memo
 
 [Extensibility — Bibliographic sources](Technical%20Memos/Extensibility/BibliographicSources.md)
 
-[Extensibility — Notification Methods](Technical%20Memos/Extensibility/Notifications.md)
+[Extensibility — Notification Methods](Technical%20Memos/Extensibility/NotificationMethods.md)
 
 [Extensibility — Lending policies](Technical%20Memos/Extensibility/LendingPolicies.md)
 
@@ -259,11 +259,11 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ### Sequence sketch — Notification methods information
 
-![Notification methods sequence](Images/NotificationSequence.png)
+![Notification methods sequence](Images/NotificationMethodsExtensibilitySequence.png)
 
 ### Structural sketch — Notification methods
 
-![Notification methods structure](Images/NotificationStructure.png)
+![Notification methods structure](Images/NotificationMethodsExtensibilityStructure.png)
 
 **Pending decisions:** more notification methods to add; notification method failure behavior.
 
@@ -279,7 +279,7 @@ On every new lending or renewal, `LendingServiceImpl` builds the reader's histor
 
 A new policy implements `LendingPolicy` with its own parameters; when it needs its own eligibility condition, a new `PolicySelectionRule` is added and both are registered at setup (EXT-LP-01 to EXT-LP-03).
 
-**Pending decisions:** answers to the open faculty questions (Adaptive count before or after the requested lending; Adaptive renewal duration and limit; renewal when the selected policy changes; history window dates; overdue renewal under Adaptive); renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
+**Pending decisions:** renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
@@ -290,7 +290,7 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
 |  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
-| | Lending policy extensibility — QAS3: policy contract, selector and history snapshot proposed; renewal calculations depend on open faculty questions; extension impact not yet validated | |
+| | Lending policy extensibility — QAS3: policy contract, selector and history snapshot proposed; renewal model on `Lending` not yet defined; extension impact not yet validated | |
 
 ### Analysis — Iteration 1
 
@@ -306,10 +306,10 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 - **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). QAS3 is not yet verified.
 - **Selection (QAS8):** the selector runs on every new lending and renewal and only chooses a policy; it does not modify existing lendings. Details are in [Configurability.md](Configurability.md) (CFG-LP-01 to CFG-LP-04).
 - **Trade-off:** more types (contract, two policies, parameter objects, decision, selector, rules, history snapshot and provider) and an explicit rule order. If a future policy needs a fact the history snapshot does not provide, the snapshot and its provider change.
-- **Risks:** the five open faculty questions affect Adaptive and renewal calculations, not the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
+- **Risks:** the Adaptive and renewal calculations are design decisions where the specification is silent; they do not affect the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
 - **Extension experiment:** add a fake third policy and selection rule without changing the service, selector or existing policies. Record changed files (expected: new classes, setup registration and new tests only) and regression results.
 - **Representative tests (QAS11):** one passing and one failing case per LP rule with a fixed `Clock` and no Spring or database; LP-SEL1 conditions and boundaries for the selector; `LendingServiceImpl` with a mocked selector and policy. Use Arrange → Act → Assert. Test design is detailed in [Testability.md](Testability.md).
-- **Remaining work:** obtain faculty answers, model renewal on `Lending`, define REST rejection responses, then implement with tests.
+- **Remaining work:** model renewal on `Lending`, define REST rejection responses, then implement with tests.
 
 The reported final coverage goal is at least 85%; metric and measured scope still need confirmation. Coverage alone does not verify extensibility or test quality.
 

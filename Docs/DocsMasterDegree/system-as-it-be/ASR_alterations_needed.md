@@ -7,7 +7,7 @@ The Library Management Service currently does not adequately support:
 
 This document is an as-is diagnosis, not the complete future ASR specification. See [to-be requirements and QAS](../system-to-be/ADD.md). A business rule is not itself a quality defect: its fixed parameters, coupling or difficulty of replacement may be.
 
-For lending, the faculty specification requires Standard and Adaptive policies, automatic per-reader selection on every new lending and renewal. Section 5 (external parameter configuration) is excluded for this two-person group; section 4 remains included pending faculty confirmation. The current active-lending limit relates to LP-S1/LP-A1; embedded rules motivate QAS3; direct clock access motivates QAS11. Line references below are historical and need rechecking as code evolves.
+For lending, the faculty specification requires Standard and Adaptive policies, automatic per-reader selection on every new lending and renewal, and externally configurable parameters at setup time (section 5); section 4 (automatic selection) is included. The current active-lending limit relates to LP-S1/LP-A1; embedded rules motivate QAS3; configuration that is partial and unvalidated motivates QAS7; direct clock access motivates QAS11. Line references below are historical and need rechecking as code evolves.
 
 Below are observations of architectural limitations in the system as-is:
 ## 1. Extensibility
@@ -62,6 +62,12 @@ Below are observations of architectural limitations in the system as-is:
   - In `create`, the limit of 3 outstanding lendings has no property. (line 70)
   - In `getOverdue`, the default page `Page(1, 10)` has no property. (line 110)
   - In `searchLendings`, the default search window of 10 days has no property. (line 133)
+
+- Lending parameters of specification section 5 are only partly configurable and are never validated:
+  - Of the parameters in sections 2–4, only the lending period exists as a property (`lendingDurationInDays=15` in `config/library.properties`, line 2). `MaxActiveLendings` is the literal 3 above; `MaxRenewals`, `RenewalPeriod`, `FirstThreshold`, `SecondThreshold`, `LongPeriod`, `StandardPeriod`, `ShortPeriod`, `HistoryPeriod`, `MinCompletedLendings` and `MinOnTimeRatio` do not exist, because renewals, the Adaptive policy and policy selection do not exist.
+  - `lendingDurationInDays` and `fineValuePerDayInCents` enter through `@Value` fields on `LendingServiceImpl` (lines 32–35) with `@PropertySource` on the class (line 25). The same pair is repeated in `Bootstrapper` (lines 37–40).
+  - No `@ConfigurationProperties`/validation exists for lending values (only `FileStorageProperties` uses `@ConfigurationProperties`). A zero or negative period is accepted at startup, and constraints between values (for example `FirstThreshold < SecondThreshold < MaxActiveLendings`, `LongPeriod > StandardPeriod > ShortPeriod`) have nowhere to be checked (section 5.3).
+  - The values sit in a classpath resource inside the packaged artifact; overriding them at setup relies on Spring's external property precedence, which is neither documented nor tested (section 5.2).
 
 - `BookServiceImpl` loads and scatters configuration:
   - In `findTop5BooksLent`, the one-year window and the top 5 have no property. (lines 128-129)

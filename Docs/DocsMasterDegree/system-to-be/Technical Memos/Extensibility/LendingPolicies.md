@@ -22,7 +22,7 @@ Adopt the following tactics: Abstract Common Services, Encapsulate, Use an Inter
 - Selection depends on the reader's history (`HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`, no overdue lending) and must be re-evaluated on every new lending and renewal (LP-SEL1, LP-SEL2).
 - Rules depend on the current date (overdue lendings, history window, due dates), so tests need a controllable time source (QAS11).
 - All quantitative parameters must be externally configurable at setup and satisfy their constraints (specification section 5, QAS7), so policies cannot hard-code them.
-- Five open faculty questions affect calculations: Adaptive count before or after the requested lending; Adaptive renewal duration and limit; interaction when the selected policy changes on renewal; history window dates and boundaries; whether an overdue lending can be renewed under Adaptive.
+- Behaviour the specification leaves open is decided here and isolated in the policy or rule concerned: Adaptive period from the active count before the requested lending; Adaptive renewal extends the current limit date by the Adaptive period for the current count, with no renewal limit; a renewal is evaluated by the policy selected at that moment; the history window uses the returned date with inclusive boundaries; an overdue lending cannot be renewed under Adaptive.
 - Preserve the existing layered Java/Spring REST backend and the `Lending` invariants.
 
 ## Solution
@@ -53,7 +53,6 @@ The selected alternative separates what a policy allows from who gets it. It is 
 
 ## Pending issues
 
-- Answers to the five open faculty questions in [ADD.md](../../ADD.md); the contract does not depend on them, but the Adaptive and renewal calculations do.
 - Renewal model on `Lending`: renewal count, and whether to record the policy applied when the lending was created.
 - Rule order when more than one non-default rule matches.
 - REST response format for rejection reasons.
