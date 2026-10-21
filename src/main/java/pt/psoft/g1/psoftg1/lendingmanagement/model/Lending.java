@@ -108,12 +108,6 @@ public class Lending {
     @Column(length = 1024)
     private String commentary = null;
 
-    @Transient
-    private Integer daysUntilReturn;
-
-    @Transient
-    private Integer daysOverdue;
-
     @Getter
     private int fineValuePerDayInCents;
 
@@ -121,40 +115,42 @@ public class Lending {
     /**
      * Constructs a new {@code Lending} object to be persisted in the database.
      * <p>
-     * Sets {@code startDate} as the current date, and {@code limitDate} as the current date plus the
-     * business specified number of days a reader can take to return the book ({@link Lending#MAX_DAYS_PER_LENDING}).
+     * Sets {@code startDate} as {@code today}, and {@code limitDate} as {@code today} plus the
+     * number of days a reader can take to return the book.
      *
      * @param       book {@code Book} object, which should be retrieved from the database.
      * @param       readerDetails {@code Reader} object, which should be retrieved from the database.
      * @param       seq sequential number, which should be obtained from the year's count on the database.
+     * @param       today reference date, supplied by the caller so the entity never reads the system clock.
      * @throws      NullPointerException if any of the arguments is {@code null}
      * */
-    public Lending(Book book, ReaderDetails readerDetails, int seq, int lendingDuration, int fineValuePerDayInCents){
+    public Lending(Book book, ReaderDetails readerDetails, int seq, int lendingDuration, int fineValuePerDayInCents, LocalDate today){
         try {
             this.book = Objects.requireNonNull(book);
             this.readerDetails = Objects.requireNonNull(readerDetails);
         }catch (NullPointerException e){
             throw new IllegalArgumentException("Null objects passed to lending");
         }
-        this.lendingNumber = new LendingNumber(seq);
-        this.startDate = LocalDate.now();
-        this.limitDate = LocalDate.now().plusDays(lendingDuration);
+        // Year comes from the supplied date, not the system clock, so lending numbers are reproducible in tests.
+        this.lendingNumber = new LendingNumber(today.getYear(), seq);
+        // Dates derive from the caller's reference date so overdue rules can be tested at fixed days (QAS11).
+        this.startDate = today;
+        this.limitDate = today.plusDays(lendingDuration);
         this.returnedDate = null;
         this.fineValuePerDayInCents = fineValuePerDayInCents;
-        setDaysUntilReturn();
-        setDaysOverdue();
     }
 
     /**
-     * <p>Sets {@code commentary} and the current date as {@code returnedDate}.
+     * <p>Sets {@code commentary} and {@code today} as {@code returnedDate}.
      * <p>If {@code returnedDate} is after {@code limitDate}, fine is applied with corresponding value.
      *
      * @param       desiredVersion to prevent editing a stale object.
      * @param       commentary written by a reader.
+     * @param       today reference date, supplied by the caller.
      * @throws      StaleObjectStateException if object was already modified by another user.
      * @throws      IllegalArgumentException  if {@code returnedDate} already has a value.
      */
-    public void setReturned(final long desiredVersion, final String commentary){
+    public void setReturned(final long desiredVersion, final String commentary, final LocalDate today){
 
         if (this.returnedDate != null)
             throw new IllegalArgumentException("book has already been returned!");
@@ -166,55 +162,44 @@ public class Lending {
         if(commentary != null)
             this.commentary = commentary;
 
-        this.returnedDate = LocalDate.now();
+        // The return date is supplied, not read from the clock, so late returns can be tested at fixed days.
+        this.returnedDate = today;
     }
 
     /**
      * <p>Returns the number of days that the lending is/was past its due date</p>
+     * @param       today reference date, used when the book has not been returned.
      * @return      If the book was returned on time, or there is still time for it be returned, returns 0.
      * If the book has been returned with delay, returns the number of days of delay.
      * If the book has not been returned, returns the number of days
      * past its limit date.
      */
-    public int getDaysDelayed(){
+    public int getDaysDelayed(final LocalDate today){
+        // Takes "today" as a parameter: the old no-arg version read the system clock, so results changed with the run date.
         if(this.returnedDate != null) {
             return Math.max((int) ChronoUnit.DAYS.between(this.limitDate, this.returnedDate), 0);
         }else{
-            return Math.max((int) ChronoUnit.DAYS.between(this.limitDate, LocalDate.now()), 0);
+            return Math.max((int) ChronoUnit.DAYS.between(this.limitDate, today), 0);
         }
     }
 
-    private void setDaysUntilReturn(){
-        int daysUntilReturn = (int) ChronoUnit.DAYS.between(LocalDate.now(), this.limitDate);
+    public Optional<Integer> getDaysUntilReturn(final LocalDate today) {
+        // Computed on demand: the former @Transient fields cached values calculated with the real clock.
+        int daysUntilReturn = (int) ChronoUnit.DAYS.between(today, this.limitDate);
         if(this.returnedDate != null || daysUntilReturn < 0){
-            this.daysUntilReturn = null;
-        }else{
-            this.daysUntilReturn = daysUntilReturn;
+            return Optional.empty();
         }
+        return Optional.of(daysUntilReturn);
     }
 
-    private void setDaysOverdue(){
-        int days = getDaysDelayed();
-        if(days > 0){
-            this.daysOverdue = days;
-        }else{
-            this.daysOverdue = null;
-        }
+    public Optional<Integer> getDaysOverdue(final LocalDate today) {
+        int days = getDaysDelayed(today);
+        return days > 0 ? Optional.of(days) : Optional.empty();
     }
 
-    public Optional<Integer> getDaysUntilReturn() {
-        setDaysUntilReturn();
-        return Optional.ofNullable(daysUntilReturn);
-    }
-
-    public Optional<Integer> getDaysOverdue() {
-        setDaysOverdue();
-        return Optional.ofNullable(daysOverdue);
-    }
-
-    public Optional<Integer> getFineValueInCents() {
+    public Optional<Integer> getFineValueInCents(final LocalDate today) {
         Optional<Integer> fineValueInCents = Optional.empty();
-        int days = getDaysDelayed();
+        int days = getDaysDelayed(today);
         if(days > 0){
             fineValueInCents = Optional.of(fineValuePerDayInCents * days);
         }

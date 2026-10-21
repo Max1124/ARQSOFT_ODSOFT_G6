@@ -2,8 +2,6 @@ package pt.psoft.g1.psoftg1.lendingmanagement.model;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.PropertySource;
 import pt.psoft.g1.psoftg1.authormanagement.model.Author;
 import pt.psoft.g1.psoftg1.bookmanagement.model.Book;
 import pt.psoft.g1.psoftg1.genremanagement.model.Genre;
@@ -16,15 +14,19 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@PropertySource({"classpath:config/library.properties"})
 class LendingTest {
+    // Fixed date so results do not depend on the day the tests run.
+    private static final LocalDate TODAY = LocalDate.of(2026, 3, 10);
+    // Constant instead of @Value: this unit test no longer needs Spring or library.properties.
+    private static final int LENDING_DURATION = 15;
+    private static final int FINE_PER_DAY = 200;
     private static final ArrayList<Author> authors = new ArrayList<>();
     private static Book book;
     private static ReaderDetails readerDetails;
-    @Value("${lendingDurationInDays}")
-    private int lendingDurationInDays;
-    @Value("${fineValuePerDayInCents}")
-    private int fineValuePerDayInCents;
+
+    private static Lending newLending() {
+        return new Lending(book, readerDetails, 1, LENDING_DURATION, FINE_PER_DAY, TODAY);
+    }
 
     @BeforeAll
     public static void setup(){
@@ -51,84 +53,126 @@ class LendingTest {
 
     @Test
     void ensureBookNotNull(){
-        assertThrows(IllegalArgumentException.class, () -> new Lending(null, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents));
+        assertThrows(IllegalArgumentException.class, () -> new Lending(null, readerDetails, 1, LENDING_DURATION, FINE_PER_DAY, TODAY));
     }
 
     @Test
     void ensureReaderNotNull(){
-        assertThrows(IllegalArgumentException.class, () -> new Lending(book, null, 1, lendingDurationInDays, fineValuePerDayInCents));
+        assertThrows(IllegalArgumentException.class, () -> new Lending(book, null, 1, LENDING_DURATION, FINE_PER_DAY, TODAY));
     }
 
     @Test
     void ensureValidReaderNumber(){
-        assertThrows(IllegalArgumentException.class, () -> new Lending(book, readerDetails, -1, lendingDurationInDays, fineValuePerDayInCents));
+        assertThrows(IllegalArgumentException.class, () -> new Lending(book, readerDetails, -1, LENDING_DURATION, FINE_PER_DAY, TODAY));
     }
 
     @Test
     void testSetReturned(){
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        lending.setReturned(0,null);
-        assertEquals(LocalDate.now(), lending.getReturnedDate());
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY);
+        assertEquals(TODAY, lending.getReturnedDate());
     }
 
     @Test
     void testGetDaysDelayed(){
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(0, lending.getDaysDelayed());
+        assertEquals(0, newLending().getDaysDelayed(TODAY));
     }
 
     @Test
     void testGetDaysUntilReturn(){
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(Optional.of(lendingDurationInDays), lending.getDaysUntilReturn());
+        assertEquals(Optional.of(LENDING_DURATION), newLending().getDaysUntilReturn(TODAY));
     }
 
     @Test
     void testGetDaysOverDue(){
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(Optional.empty(), lending.getDaysOverdue());
+        assertEquals(Optional.empty(), newLending().getDaysOverdue(TODAY));
+    }
+
+    @Test
+    void lendingIsNotOverdueOnItsLimitDate(){
+        Lending lending = newLending();
+        LocalDate limit = TODAY.plusDays(LENDING_DURATION);
+        assertEquals(0, lending.getDaysDelayed(limit));
+        assertEquals(Optional.of(0), lending.getDaysUntilReturn(limit));
+        assertEquals(Optional.empty(), lending.getFineValueInCents(limit));
+    }
+
+    @Test
+    void lendingIsOverdueTheDayAfterItsLimitDate(){
+        Lending lending = newLending();
+        LocalDate afterLimit = TODAY.plusDays(LENDING_DURATION + 1);
+        assertEquals(1, lending.getDaysDelayed(afterLimit));
+        assertEquals(Optional.of(1), lending.getDaysOverdue(afterLimit));
+        assertEquals(Optional.empty(), lending.getDaysUntilReturn(afterLimit));
+        assertEquals(Optional.of(FINE_PER_DAY), lending.getFineValueInCents(afterLimit));
+    }
+
+    @Test
+    void fineGrowsWithEachDayOverdue(){
+        assertEquals(Optional.of(5 * FINE_PER_DAY), newLending().getFineValueInCents(TODAY.plusDays(LENDING_DURATION + 5)));
+    }
+
+    @Test
+    void returnedOnTheLimitDateIsNotDelayed(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY.plusDays(LENDING_DURATION));
+        assertEquals(0, lending.getDaysDelayed(TODAY.plusDays(100)));
+    }
+
+    @Test
+    void returnedLateKeepsItsDaysDelayedAfterwards(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY.plusDays(LENDING_DURATION + 3));
+        assertEquals(3, lending.getDaysDelayed(TODAY.plusDays(100)));
+    }
+
+    @Test
+    void returnedLendingHasNoDaysUntilReturn(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY);
+        assertEquals(Optional.empty(), lending.getDaysUntilReturn(TODAY));
+    }
+
+    @Test
+    void cannotReturnTwice(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY);
+        assertThrows(IllegalArgumentException.class, () -> lending.setReturned(0, null, TODAY));
     }
 
     @Test
     void testGetTitle() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals("O Inspetor Max", lending.getTitle());
+        assertEquals("O Inspetor Max", newLending().getTitle());
     }
 
     @Test
     void testGetLendingNumber() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(LocalDate.now().getYear() + "/1", lending.getLendingNumber());
+        assertEquals(TODAY.getYear() + "/1", newLending().getLendingNumber());
     }
 
     @Test
     void testGetBook() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(book, lending.getBook());
+        assertEquals(book, newLending().getBook());
     }
 
     @Test
     void testGetReaderDetails() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(readerDetails, lending.getReaderDetails());
+        assertEquals(readerDetails, newLending().getReaderDetails());
     }
 
     @Test
     void testGetStartDate() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(LocalDate.now(), lending.getStartDate());
+        assertEquals(TODAY, newLending().getStartDate());
     }
 
     @Test
     void testGetLimitDate() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertEquals(LocalDate.now().plusDays(lendingDurationInDays), lending.getLimitDate());
+        assertEquals(TODAY.plusDays(LENDING_DURATION), newLending().getLimitDate());
     }
 
     @Test
     void testGetReturnedDate() {
-        Lending lending = new Lending(book, readerDetails, 1, lendingDurationInDays, fineValuePerDayInCents);
-        assertNull(lending.getReturnedDate());
+        assertNull(newLending().getReturnedDate());
     }
 
 }

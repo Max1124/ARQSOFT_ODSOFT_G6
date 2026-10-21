@@ -3,10 +3,13 @@ package pt.psoft.g1.psoftg1.lendingmanagement.api;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.Named;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 import pt.psoft.g1.psoftg1.lendingmanagement.model.Lending;
 import pt.psoft.g1.psoftg1.shared.api.MapperInterface;
 
+import java.time.Clock;
+import java.time.LocalDate;
 import java.util.*;
 
 /**
@@ -18,9 +21,18 @@ import java.util.*;
 @Mapper(componentModel = "spring")
 public abstract class LendingViewMapper extends MapperInterface {
 
+    @Autowired
+    private Clock clock; // the entity no longer reads the system clock, so the view supplies the date
+
+    protected LocalDate today() {
+        return LocalDate.now(clock);
+    }
+
     @Mapping(target = "lendingNumber", source = "lendingNumber")
     @Mapping(target = "bookTitle", source = "book.title")
-    @Mapping(target = "fineValueInCents", expression = "java(lending.getFineValueInCents().orElse(null))")
+    @Mapping(target = "daysUntilReturn", expression = "java(lending.getDaysUntilReturn(today()).orElse(null))")
+    @Mapping(target = "daysOverdue", expression = "java(lending.getDaysOverdue(today()).orElse(null))")
+    @Mapping(target = "fineValueInCents", expression = "java(lending.getFineValueInCents(today()).orElse(null))")
     @Mapping(target = "_links.self", source = ".", qualifiedByName = "lendingLink")
     @Mapping(target = "_links.book", source = "book", qualifiedByName = "bookLink")
     @Mapping(target = "returnedDate", source = "returnedDate")

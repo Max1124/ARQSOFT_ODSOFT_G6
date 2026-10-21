@@ -5,6 +5,7 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.util.Objects;
 
 /**
@@ -35,12 +36,14 @@ public class Fine {
      * Constructs a new {@code Fine} object. Sets the current value of the fine,
      * as well as the fine value per day at the time of creation.
      * @param   lending transaction which generates this fine.
+     * @param   today reference date used to compute the days of delay.
      * */
-    public Fine(Lending lending) {
-        if(lending.getDaysDelayed() <= 0)
+    public Fine(Lending lending, LocalDate today) {
+        // Delay is measured at the supplied date so a fine can be computed for any day, not only the real today.
+        if(lending.getDaysDelayed(today) <= 0)
             throw new IllegalArgumentException("Lending is not overdue");
         fineValuePerDayInCents = lending.getFineValuePerDayInCents();
-        centsValue = fineValuePerDayInCents * lending.getDaysDelayed();
+        centsValue = fineValuePerDayInCents * lending.getDaysDelayed(today);
         this.lending = Objects.requireNonNull(lending);
     }
 

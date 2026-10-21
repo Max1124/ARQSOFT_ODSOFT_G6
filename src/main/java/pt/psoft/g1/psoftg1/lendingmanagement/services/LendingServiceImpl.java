@@ -14,6 +14,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
 import pt.psoft.g1.psoftg1.readermanagement.repositories.ReaderRepository;
 import pt.psoft.g1.psoftg1.shared.services.Page;
 
+import java.time.Clock;
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
 import java.util.List;
@@ -28,6 +29,7 @@ public class LendingServiceImpl implements LendingService{
     private final FineRepository fineRepository;
     private final BookRepository bookRepository;
     private final ReaderRepository readerRepository;
+    private final Clock clock; // single time source, so tests can inject a fixed clock (QAS11)
 
     @Value("${lendingDurationInDays}")
     private int lendingDurationInDays;
@@ -57,12 +59,13 @@ public class LendingServiceImpl implements LendingService{
 
     @Override
     public Lending create(final CreateLendingRequest resource) {
+        final LocalDate today = LocalDate.now(clock); // read once so every date check in this request agrees
         int count = 0;
 
         Iterable<Lending> lendingList = lendingRepository.listOutstandingByReaderNumber(resource.getReaderNumber());
         for (Lending lending : lendingList) {
             //Business rule: cannot create a lending if user has late outstanding books to return.
-            if (lending.getDaysDelayed() > 0) {
+            if (lending.getDaysDelayed(today) > 0) {
                 throw new LendingForbiddenException("Reader has book(s) past their due date");
             }
             count++;
@@ -77,7 +80,7 @@ public class LendingServiceImpl implements LendingService{
         final var r = readerRepository.findByReaderNumber(resource.getReaderNumber())
                 .orElseThrow(() -> new NotFoundException("Reader not found"));
         int seq = lendingRepository.getCountFromCurrentYear()+1;
-        final Lending l = new Lending(b,r,seq, lendingDurationInDays, fineValuePerDayInCents );
+        final Lending l = new Lending(b,r,seq, lendingDurationInDays, fineValuePerDayInCents, today);
 
         return lendingRepository.save(l);
     }
@@ -88,10 +91,11 @@ public class LendingServiceImpl implements LendingService{
         var lending = lendingRepository.findByLendingNumber(lendingNumber)
                 .orElseThrow(() -> new NotFoundException("Cannot update lending with this lending number"));
 
-        lending.setReturned(desiredVersion, resource.getCommentary());
+        final LocalDate today = LocalDate.now(clock); // same date for the return and the fine
+        lending.setReturned(desiredVersion, resource.getCommentary(), today);
 
-        if(lending.getDaysDelayed() > 0){
-            final var fine = new Fine(lending);
+        if(lending.getDaysDelayed(today) > 0){
+            final var fine = new Fine(lending, today);
             fineRepository.save(fine);
         }
 
@@ -130,7 +134,7 @@ public class LendingServiceImpl implements LendingService{
             query = new SearchLendingQuery("",
                     "",
                     null,
-                    LocalDate.now().minusDays(10L).toString(),
+                    LocalDate.now(clock).minusDays(10L).toString(),
                     null);
 
         try {
