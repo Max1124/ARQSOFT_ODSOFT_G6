@@ -26,7 +26,7 @@ Selected catalogue tactics: Abstract Data Sources, Limit Nondeterminism, Limit S
 - Assignment section 1.3.3.4 requires class, domain, mutation, collaboration and system test categories; lending contains most of the new domain rules.
 - Thresholds, ratios and windows invite off-by-one errors, so boundary cases and mutation analysis matter more than test count.
 - The current lending tests are integration tests only; an integration test cannot attribute a failure to a rule, to wiring or to persistence.
-- Five open faculty questions affect some expected values (CON-LP-3).
+- Behaviour the specification leaves open (Adaptive count, renewal, history window) is decided in the design and stated in the tests that rely on it (CON-LP-3).
 - Parameters are externally configured and validated at startup (QAS7).
 - Every seam must also serve the production design (CON-TST-11); no test-only hooks.
 
@@ -56,7 +56,6 @@ Time source: static mocking and expected values computed from the real date are 
 
 ## Pending issues
 
-- Expected values for cases affected by the open faculty questions.
 - Fixture format for seeded histories and test properties.
 - Surefire/Failsafe split so the unit stage gates the integration stage.
 - Mutation-score threshold and exclusions.

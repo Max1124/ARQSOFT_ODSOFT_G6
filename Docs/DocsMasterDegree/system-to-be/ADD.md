@@ -65,7 +65,7 @@ Below are listed the non-functional and functional requirements
 - US14: As a Reader, I want to renew a lending only when the re-evaluated policy permits it.
 
 ### Lending rules from the faculty specification
-Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 5 (external setup-time parameter configuration, US10/QAS7). An earlier version of this document excluded section 5 as for a two-person group; that exclusion is withdrawn. Section 4 (automatic policy selection) remains included pending faculty confirmation.
+Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 4 (automatic policy selection, brief 1.3.3.3 item 3) and section 5 (external setup-time parameter configuration, US10/QAS7).
 - LP-S1 (2.1): Standard permits at most `MaxActiveLendings > 0` active lendings.
 - LP-S2 (2.2): Standard lending duration is `LendingPeriod > 0` days.
 - LP-S3 (2.3): Standard permits at most `MaxRenewals >= 0` renewals, each for `RenewalPeriod > 0` days.
@@ -74,7 +74,7 @@ Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lendin
 - LP-A1 (3.1): Adaptive permits at most `MaxActiveLendings > 0` active lendings.
 - LP-A2 (3.2-3.4): Below `FirstThreshold`, use `LongPeriod`; from `FirstThreshold` inclusive to `SecondThreshold` exclusive, use `StandardPeriod`; at or above `SecondThreshold`, use `ShortPeriod`.
 - LP-A3 (3.5): Validate `0 < FirstThreshold < SecondThreshold < MaxActiveLendings` and `LongPeriod > StandardPeriod > ShortPeriod > 0`.
-- LP-A4 (3.6): Adaptive renewal requires the resulting lending to continue satisfying the applicable policy conditions; the exact calculation needs clarification.
+- LP-A4 (3.6): Adaptive renewal requires the resulting lending to continue satisfying the applicable policy conditions.
 - LP-A5 (3.7): A reader with any overdue lending cannot start a new Adaptive lending.
 - LP-SEL1 (4.1-4.2): Standard is the default. Adaptive applies only when, in the previous `HistoryPeriod > 0` months, the reader completed at least `MinCompletedLendings > 0`, returned at least `MinOnTimeRatio` (0-100%) of those lendings on time, and has no currently overdue lending. All conditions must hold.
 - LP-SEL2 (4.3): Re-evaluate selection for each reader on every new lending and renewal request.
@@ -85,15 +85,6 @@ Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lendin
 The existing non-functional section mixes required functional capabilities with quality requirements. Retrieving external data and sending notifications are functional; limited impact of additions is extensibility; setup-time selection is configurability. User stories refine these capabilities.
 
 Search by title (US2), merge behaviour (US3), specific notification events (US6/US7), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
-
-### Pending questions for the faculty
-1. Does Adaptive duration use the active-lending count before or after adding the requested lending?
-2. What duration does an Adaptive renewal add, from which date, and is there a renewal-count limit?
-3. If the selected policy changes on renewal, how do its rules interact with original terms and previous renewals?
-4. Which date determines inclusion in the completed-lending history window, and are boundary dates inclusive?
-5. Can an overdue lending be renewed under Adaptive? Standard forbids it explicitly (specification 2.5); Adaptive only states that the resulting lending must continue to satisfy the policy conditions (3.6).
-
-These questions remain open; affected calculations and acceptance tests must not assume answers.
 
 
 ## Quality Attribute Scenarios
@@ -200,7 +191,7 @@ This scenario specifies runtime selection behaviour, rather than setup-time reco
 | Environment | Runtime, under normal operation, with active lendings and concurrent requests. |
 | Artifact | Lending service, policy selector and reader-history access. |
 | Response | Evaluate all Adaptive eligibility conditions for this reader. Select Adaptive only when all hold; otherwise select Standard. Validate the requested operation with that policy. |
-| Response measure | Every new lending and renewal re-evaluates selection, without restart or manual switching. Tests exercise each condition and readers with different eligibility. Selection alone does not modify existing lendings; renewal effects require clarification. |
+| Response measure | Every new lending and renewal re-evaluates selection, without restart or manual switching. Tests exercise each condition and readers with different eligibility. Selection alone does not modify existing lendings. |
 
 ### Testability
 

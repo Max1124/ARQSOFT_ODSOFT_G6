@@ -47,7 +47,7 @@ Plain input/output fixtures and standard library/framework execution must be dis
 | Iteration 2 | Verify notification dispatch and channels without sending real messages. | QAS10 — Testability; US6, US7, US9; US8 remains proposed scope | Channel doubles, recording interactions, transport boundaries |
 | Iteration 3 | Identify and decide the architectural changes that make lending rules, parameter validation and per-reader selection controllable and observable, and fix the order in which they are tested. | QAS11 — Testability; US10, US11, US13, US14. Related: QAS3, QAS7, QAS8 | Time as an injected input, parameter objects, policy extraction, history port, constructor injection, bottom-up test order (unit before integration) |
 
-The roadmap groups testing-related architectural concerns, not test counts. Lending parameters are externally configured (QAS7), so parameter validation is tested in isolation; automatic policy selection remains included pending faculty confirmation.
+The roadmap groups testing-related architectural concerns, not test counts. Lending parameters are externally configured (QAS7), so parameter validation is tested in isolation; automatic policy selection (specification section 4) is included.
 
 ### Iteration 1 — Bibliographic information
 
@@ -244,7 +244,7 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | CON-TST-4 | Explicitly distinguish a single-class SUT from real application-class collaboration. | Reported classroom guidance |
 | CON-TST-5 | Preserve domain invariants while making dependencies explicit; no blanket mocking or weakening validation for coverage. | Proposed design safeguard |
 | CON-TST-6 | Lending tests do not depend on the date they run; boundary dates are fixed through the injected clock. | QAS11 |
-| CON-TST-7 | Tests affected by the open faculty questions (Adaptive count before/after, renewal duration, history window boundaries, overdue renewal under Adaptive) are written once the answers are known; no expected value assumes an answer. | ADD.md pending questions, CON-LP-3 |
+| CON-TST-7 | Expected values for behaviour the specification leaves open (Adaptive count, renewal, history window) follow the design and say so in the test; a change of decision changes those tests only. | CON-LP-3 |
 | CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. | QAS10 |
 | CON-TST-9 | Tests depending on undefined notification behaviour (channel failure, webhook target, behaviour with no enabled channel, trigger of due-date and overdue events) are written once those are decided; no expected value assumes an answer. | Extensibility.md and Configurability.md pending decisions |
 | CON-TST-10 | A collaboration or system test is not written, and does not count as evidence, for a component whose included production classes lack passing class-level tests. Class tests precede integration tests in each iteration. | Reported colleague guidance; unit-versus-integration material |
@@ -342,9 +342,9 @@ Representative cases that the architecture above makes expressible; they are the
 | Standard active limit | `StandardLendingPolicy` / class | Snapshot with `MaxActiveLendings − 1` and then `MaxActiveLendings` active lendings → evaluate new lending → first allowed with `LendingPeriod`, second rejected with the limit reason (LP-S1, LP-S2). |
 | Overdue blocks lending | Each policy / class | Snapshot with one overdue lending → evaluate new lending → rejected with the overdue reason (LP-S4, LP-A5). |
 | Standard renewal | `StandardLendingPolicy` / class | Lending with `MaxRenewals` renewals, or overdue → evaluate renewal → rejected; below the limit and not overdue → allowed with `RenewalPeriod` (LP-S3, LP-S5). |
-| Adaptive periods | `AdaptiveLendingPolicy` / class | Active counts just below and at `FirstThreshold` and `SecondThreshold` → evaluate → Long, Standard, Short periods (LP-A2). Which count is used depends on open question 1; expected values are set once answered. |
+| Adaptive periods | `AdaptiveLendingPolicy` / class | Active counts just below and at `FirstThreshold` and `SecondThreshold` → evaluate → Long, Standard, Short periods (LP-A2). The count before adding the requested lending is used. |
 | Parameter constraints | Parameter objects / transparent-box | Values with `FirstThreshold >= SecondThreshold`, `SecondThreshold >= MaxActiveLendings`, `ShortPeriod >= StandardPeriod`, a zero period, `MinOnTimeRatio` outside 0–100 → construct → exception naming parameter and constraint; valid set → created (LP-A3, LP-CFG2). |
-| Selection conditions | `AdaptiveEligibilityRule` / class | Snapshots with completed lendings `MinCompletedLendings − 1` and exactly the minimum, on-time ratio just below and exactly at `MinOnTimeRatio`, and a current overdue lending → evaluate → qualifies only when all hold (LP-SEL1). Window boundary dates wait for open question 4. |
+| Selection conditions | `AdaptiveEligibilityRule` / class | Snapshots with completed lendings `MinCompletedLendings − 1` and exactly the minimum, on-time ratio just below and exactly at `MinOnTimeRatio`, and a current overdue lending → evaluate → qualifies only when all hold (LP-SEL1). Window boundaries are inclusive and use the returned date. |
 | Default and order | `LendingPolicySelector` / class | Rule doubles: none matches; first matches; two match → select → Standard; first rule's policy; first in order. |
 | Service delegation | `LendingServiceImpl` / class | Mocked selector returns a policy double that rejects → create → rejection carries the policy reason and nothing is saved; policy allows N days → saved lending with limit date = fixed today + N. |
 | Re-evaluation per request | Collaboration | Seed a reader eligible for Adaptive; request a lending; add an overdue lending; request again → second request evaluated with Standard (LP-SEL2). |
@@ -432,7 +432,7 @@ No sketch has been drawn yet. Class tests place one channel, the dispatch or the
 
 **Pending decisions (notifications):** form of the delivery boundary per channel; where dispatch lives; how due-date and overdue events are triggered; webhook target; channel failure behaviour and behaviour with no enabled channel; fixture format for readers and preferences; whether context tests run under Surefire or Failsafe.
 
-**Pending decisions:** expected values affected by the open faculty questions; fixture format for seeded histories; whether context-startup tests run under Surefire or Failsafe; mutation-score threshold and exclusions.
+**Pending decisions:** fixture format for seeded histories; whether context-startup tests run under Surefire or Failsafe; mutation-score threshold and exclusions.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
@@ -444,7 +444,7 @@ The columns are independent status lists: cells on the same row are not related.
 |---|---|---|
 | | Bibliographic isolation — QAS9: SUT boundaries, tactics and test categories proposed; concrete contracts, fixture examples and expected results still need refinement |  |
 | | Notification testability — QAS10: recording doubles, delivery boundary, SUT boundaries, test categories and AAA cases proposed; dispatch location, event trigger, failure behaviour and boundary sketches still pending | |
-| | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service), bottom-up test order and SUT boundaries decided; nothing implemented; cases affected by open faculty questions and fixture formats still pending | |
+| | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service), bottom-up test order and SUT boundaries decided; nothing implemented; fixture formats still pending | |
 
 ## Step 8 — Refine as necessary
 
@@ -452,4 +452,4 @@ Resolve the pending contracts with concrete examples; update the memo and bounda
 
 For notifications: decide the delivery boundary, the dispatch location and the failure behaviour first; then write the recording-double class tests for dispatch and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests. Draw the notification boundary sketches and add the testability memo.
 
-For lending: apply the architectural changes in dependency order and write the class-level tests of each element before the next element, and before any collaboration test that includes it: clock, parameter objects, policies and rules, selector, history provider, then the thin `LendingServiceImpl`. Keep the existing lending integration tests passing as a regression check while the service is refactored, add the missing class-level service test first, and update expected values once the faculty answers the open questions. Section 1.3.3.4 is then implementation only, from the SUT boundaries and cases above.
+For lending: apply the architectural changes in dependency order and write the class-level tests of each element before the next element, and before any collaboration test that includes it: clock, parameter objects, policies and rules, selector, history provider, then the thin `LendingServiceImpl`. Keep the existing lending integration tests passing as a regression check while the service is refactored, add the missing class-level service test first, and state in each test the open behaviour it relies on. Section 1.3.3.4 is then implementation only, from the SUT boundaries and cases above.
