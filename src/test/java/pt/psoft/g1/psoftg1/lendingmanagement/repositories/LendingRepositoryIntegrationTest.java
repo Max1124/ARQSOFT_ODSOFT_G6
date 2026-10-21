@@ -147,6 +147,41 @@ public class LendingRepositoryIntegrationTest {
         assertThat(count).isEqualTo(2);
     }
 
+    // Window bounds are inclusive: a lending returned exactly on either bound must be counted by the history provider.
+    @Test
+    public void testListReturnedBetweenIncludesBothBoundaries() {
+        LocalDate returned = lending.getReturnedDate();
+        List<Lending> found = lendingRepository.listReturnedByReaderNumberBetween(
+                lending.getReaderDetails().getReaderNumber(), returned, returned);
+        assertThat(found).contains(lending);
+    }
+
+    @Test
+    public void testListReturnedBetweenExcludesLendingsReturnedOutsideTheWindow() {
+        String readerNumber = lending.getReaderDetails().getReaderNumber();
+        LocalDate returned = lending.getReturnedDate();
+        assertThat(lendingRepository.listReturnedByReaderNumberBetween(readerNumber, returned.plusDays(1), returned.plusMonths(1)))
+                .doesNotContain(lending);
+        assertThat(lendingRepository.listReturnedByReaderNumberBetween(readerNumber, returned.minusMonths(1), returned.minusDays(1)))
+                .doesNotContain(lending);
+    }
+
+    @Test
+    public void testListReturnedBetweenIgnoresLendingsNotYetReturned() {
+        var outstanding = Lending.newBootstrappingLending(book,
+                readerDetails,
+                2024,
+                997,
+                LocalDate.of(2024, 5,31),
+                null,
+                15,
+                300);
+        lendingRepository.save(outstanding);
+        assertThat(lendingRepository.listReturnedByReaderNumberBetween(
+                lending.getReaderDetails().getReaderNumber(), LocalDate.of(2000, 1, 1), LocalDate.of(2100, 1, 1)))
+                .doesNotContain(outstanding);
+    }
+
     @Test
     public void testListOutstandingByReaderNumber() {
         var lending2 = Lending.newBootstrappingLending(book,

@@ -56,6 +56,19 @@ public interface SpringDataLendingRepository extends LendingRepository, LendingR
                 "AND l.returnedDate IS NULL")
     List<Lending> listOutstandingByReaderNumber(@Param("readerNumber") String readerNumber);
 
+    // Both bounds inclusive: the selection rule counts a lending returned exactly on a boundary date.
+    @Override
+    @Query("SELECT l " +
+            "FROM Lending l " +
+                "JOIN ReaderDetails r ON l.readerDetails.pk = r.pk " +
+            "WHERE r.readerNumber.readerNumber = :readerNumber " +
+                "AND l.returnedDate IS NOT NULL " +
+                "AND l.returnedDate >= :from " +
+                "AND l.returnedDate <= :to")
+    List<Lending> listReturnedByReaderNumberBetween(@Param("readerNumber") String readerNumber,
+                                                    @Param("from") LocalDate from,
+                                                    @Param("to") LocalDate to);
+
     @Override
     @Query(value =
             "SELECT AVG(DATEDIFF(day, l.start_date, l.returned_date)) " +
