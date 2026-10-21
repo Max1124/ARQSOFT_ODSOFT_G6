@@ -6,54 +6,61 @@ Related iteration: [Testability — Lending policies](../../Testability.md) (ite
 
 ## Issue
 
-Lending rules are date-dependent and currently live in `LendingServiceImpl` and `Lending`, which read `LocalDate.now()` directly. Existing lending tests start the full Spring context and compute expected values from the real date, so boundary cases cannot be reproduced and no rule can be tested on its own.
+The lending rules cannot be controlled or observed at class level in the current structure. "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the overdue rule and the limit of 3 sit inside `LendingServiceImpl.create` next to repository access; configuration enters through `@Value` fields; and the outcome of a rule is only an exception message. The only service and repository lending tests are `@SpringBootTest` tests with real repositories, so the lending package has integration tests and no class-level test of the service or of any rule.
 
 ## Problem
 
-How can each lending rule, parameter constraint and selection condition be verified with a known date and known history, first per class and then in real collaboration, without depending on the day the tests run?
+Which architectural changes make each lending rule, parameter constraint and selection condition controllable (known date, parameters, history) and observable (structured outcome) without Spring or a database, and in what order must tests be written so that integration tests never stand in for missing class tests?
 
 ## Summary of solution
 
-Inject one `java.time.Clock`; let the history snapshot carry the reference date to policies and rules; test policies, rules, selector and parameter objects as single-class SUTs with fixtures; test the service with mocked collaborators; then verify real collaboration and startup validation against a seeded test database with test properties and a fixed clock bean.
+Make time and configuration explicit inputs (one injected `Clock`, immutable parameter objects); extract the rules into pure policies over a read-only history snapshot that return a structured decision; reduce `LendingServiceImpl` to orchestration with constructor-injected collaborators. Fix the testing order bottom-up: class-level tests of every element first, then mutation analysis, then real collaboration, then system. The test boundaries follow from these changes; writing the tests of section 1.3.3.4 is implementation work.
 
 ## Adopt the following tactics
 
-Selected catalogue tactics: Abstract Data Sources, Limit Nondeterminism, Limit Structural Complexity, Executable Assertions and Sandbox. Dependency Injection, Isolation and Mocking (Tactics (vi)) put them into practice.
+Selected catalogue tactics: Abstract Data Sources, Limit Nondeterminism, Limit Structural Complexity, Executable Assertions and Sandbox. Dependency Injection, Isolation and Mocking (Tactics (vi)) put them into practice. Bottom-up test order follows the unit-versus-integration distinction of the software testing material.
 
 ## Factors
 
 - QAS11 requires a passing and a failing case per rule, injected parameters, a controllable clock and policy tests without Spring or database.
 - Assignment section 1.3.3.4 requires class, domain, mutation, collaboration and system test categories; lending contains most of the new domain rules.
 - Thresholds, ratios and windows invite off-by-one errors, so boundary cases and mutation analysis matter more than test count.
+- The current lending tests are integration tests only; an integration test cannot attribute a failure to a rule, to wiring or to persistence.
 - Five open faculty questions affect some expected values (CON-LP-3).
-- Parameters are externally configured and validated at startup (QAS7), which needs its own tests.
+- Parameters are externally configured and validated at startup (QAS7).
+- Every seam must also serve the production design (CON-TST-11); no test-only hooks.
 
 ## Solution
 
-- TST-LP-01: one injected `Clock`; the snapshot carries the reference date; policies and rules never read the clock.
-- TST-LP-02: policies, rules, selector and parameter objects tested as single-class SUTs with fixtures.
-- TST-LP-03: `LendingServiceImpl` tested with mocked provider, selector and policy; nothing saved on rejection.
-- TST-LP-04: parameter validation tested in constructors and at application startup with invalid test properties.
-- TST-LP-05: collaboration and system tests use a seeded test database, test properties and a fixed clock bean.
-- TST-LP-06: mutation testing on policies, rules, selector and parameter objects, with review of boundary mutants.
+- TST-LP-01: time is an injected input (one `Clock`); `Lending`, `LendingNumber` and the repository date queries receive the reference date; the snapshot carries it to policies and rules.
+- TST-LP-02: configuration is an explicit input (immutable parameter objects, constructor validation); `@Value` and `@PropertySource` only at the binding edge.
+- TST-LP-03: rules extracted from `LendingServiceImpl` into pure policies returning a structured `PolicyDecision`.
+- TST-LP-04: reader facts provided by a read-only history snapshot built behind a narrow port.
+- TST-LP-05: `LendingServiceImpl` reduced to orchestration with constructor-injected collaborators.
+- TST-LP-06: fail-fast startup validation of parameters.
+- TST-LP-07: bottom-up test order and unit-before-integration gate (CON-TST-10): class tests, then collaboration, then system; unit and integration suites run as separate stages.
+- TST-LP-08: collaboration and system tests use a seeded test database, test properties and a fixed clock bean.
+- TST-LP-09: mutation testing on policies, rules, selector and parameter objects, with review of boundary mutants.
 
 ## Motivation and trade-offs
 
-A single time source turns "today" into an ordinary input, so boundary dates become repeatable test cases and policies stay pure. The cost is a one-time change to how `Lending` and the service obtain the date, plus fixture builders for snapshots and seeded histories. Mocked collaborators can hide wiring errors, which is why collaboration and system tests remain required.
+A single time source and explicit parameters turn "today" and configuration into ordinary inputs, so boundary cases are repeatable; extracted pure policies make each rule a single-class SUT and the structured decision makes outcomes observable. The cost is a one-time change to `Lending`, `LendingNumber`, the repository date queries and the service, plus fixture builders for snapshots and seeded histories. Mocked collaborators can hide wiring errors, which is why collaboration and system tests remain required, but only after the class tests they rely on.
 
 ## Alternatives
 
-- **Static mocking of `LocalDate.now()`:** no production change, but time stays hidden in many classes, depends on a mocking-library feature and does not help system tests.
-- **Expected values relative to the real date:** no design change, but boundary dates cannot be fixed and results vary by run date — the current weakness.
-- **Injected clock with the date carried by the snapshot (selected):** explicit and reproducible; requires a one-time production change.
+- **A, tests only (no production change):** Spring-context tests, static time mocking and reflection to set `@Value` fields. Rules stay unreachable alone, so QAS11 cannot be met and failures cannot be localised.
+- **B, seams on existing classes only:** inject a `Clock` and parameters but keep the rules in `LendingServiceImpl`. Time and values become controllable, but a rule is testable only through the whole service, observability is unchanged and adding a policy still changes the service.
+- **C, seams plus extracted policies, selector, history port and parameter objects (selected):** every rule is a single-class SUT; the service is a thin orchestrator; one design serves QAS3, QAS7, QAS8 and QAS11.
+
+Time source: static mocking and expected values computed from the real date are rejected; an injected `Clock` with the date carried by the snapshot is selected.
 
 ## Pending issues
 
 - Expected values for cases affected by the open faculty questions.
 - Fixture format for seeded histories and test properties.
-- Surefire/Failsafe split for context-startup tests.
+- Surefire/Failsafe split so the unit stage gates the integration stage.
 - Mutation-score threshold and exclusions.
 
 ## Verification after implementation
 
-Collect test results, coverage and mutation reports for the policy classes; confirm each LP rule has a passing and a failing case, that tests give the same results on any run date, and that invalid properties stop startup. No results are claimed yet.
+Collect test results, coverage and mutation reports for the policy classes; confirm each LP rule has a passing and a failing case, that class-level tests exist and pass for every class included in a collaboration test, that tests give the same results on any run date, and that invalid properties stop startup. No results are claimed yet.

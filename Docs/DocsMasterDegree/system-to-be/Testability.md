@@ -29,7 +29,7 @@ For lending policies, QAS11 requires each policy rule, the parameter constraints
 - Current `AuthorTest` constructs `Author`, which creates `Name`, `Bio` and photo-related objects internally. Under the single-class SUT criterion reported from class, these real collaborations must be distinguished from isolated class tests. A test of `EntityWithPhoto` is also located in that test class.
 - Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule and the reader preference storage are design proposals, not implemented classes. Real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. How a due-date or overdue event is detected and triggered, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values.
 - Some existing tests start Spring and replace repositories with mocks. An annotation or test name does not determine the SUT. Their actual real collaborators and assertions must be inspected.
-- Lending: `LendingTest` reads `config/library.properties` through `@PropertySource` and asserts against `LocalDate.now()`; `LendingServiceImplTest` and `LendingRepositoryIntegrationTest` use `@SpringBootTest` and real-date values. Date-dependent results therefore change with the day the tests run, and no lending rule can be tested without the full context. The policy contract, selector, history snapshot and parameter objects are design proposals, not implemented classes.
+- Lending: the current structure, not the lack of test cases, is what prevents testing the lending rules in isolation (analysed per element in Step 3, Iteration 3). "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the numeric limit (3) and the overdue rule sit inside `LendingServiceImpl.create`, interleaved with repository access; configuration enters through `@Value` fields. The only service-level and repository-level lending tests (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`) are `@SpringBootTest` tests with real repositories, so the lending package has integration tests but no class-level test of the service or of any rule. The policy contract, selector, history snapshot and parameter objects are design proposals, not implemented classes.
 
 ### SUT convention for this project
 
@@ -45,7 +45,7 @@ Plain input/output fixtures and standard library/framework execution must be dis
 |---|---|---|---|
 | Iteration 1 | Make bibliographic classes and their collaboration testable with controlled data, without live provider dependencies. | QAS9 — Testability; US1, US3. Related: US5/QAS4 and section 1.3.3.4 | Explicit SUT boundaries, dependency injection, isolated mapping/merge, HTTP doubles, AAA, mutation analysis |
 | Iteration 2 | Verify notification dispatch and channels without sending real messages. | QAS10 — Testability; US6, US7, US9; US8 remains proposed scope | Channel doubles, recording interactions, transport boundaries |
-| Iteration 3 | Verify policies, parameter validation and per-reader selection with controlled dates and history. | QAS11 — Testability; US10, US11, US13, US14. Related: QAS3, QAS7, QAS8 | Policy isolation, controlled clock, history fixtures, boundary cases, startup validation tests |
+| Iteration 3 | Identify and decide the architectural changes that make lending rules, parameter validation and per-reader selection controllable and observable, and fix the order in which they are tested. | QAS11 — Testability; US10, US11, US13, US14. Related: QAS3, QAS7, QAS8 | Time as an injected input, parameter objects, policy extraction, history port, constructor injection, bottom-up test order (unit before integration) |
 
 The roadmap groups testing-related architectural concerns, not test counts. Lending parameters are externally configured (QAS7), so parameter validation is tested in isolation; automatic policy selection remains included pending faculty confirmation.
 
@@ -61,7 +61,9 @@ Selection rationale: the tests must show that a reader receives a due-date or ov
 
 ### Iteration 3 — Lending policies
 
-Primary driver: QAS11. Related drivers: QAS3 (adding a policy), QAS7 (parameter configuration), QAS8 (per-reader selection). Goal: make every lending rule, parameter constraint and selection condition verifiable with fixed dates, prepared histories and explicit parameter values, first per class and then in real collaboration. Preserve the policy contract, selector and history snapshot agreed in [Extensibility.md](Extensibility.md) and the parameter binding in [Configurability.md](Configurability.md).
+Primary driver: QAS11. Related drivers: QAS3 (adding a policy), QAS7 (parameter configuration), QAS8 (per-reader selection). Goal: identify which architectural changes the lending design needs so that every lending rule, parameter constraint and selection condition is controllable (fixed dates, prepared histories, explicit parameter values) and observable (structured outcome), and define the order of testing: each class first, real collaboration only afterwards. Preserve the policy contract, selector and history snapshot agreed in [Extensibility.md](Extensibility.md) and the parameter binding in [Configurability.md](Configurability.md).
+
+This iteration decides the changes and the test boundaries. Writing the tests of section 1.3.3.4 is implementation work that follows from them; the test cases below are consequences of the changes, not the contribution of the iteration.
 
 Selection rationale: lending rules are date-dependent and currently only testable with the full Spring context and the real clock. They also contain most of the new domain logic of this project, so they are the main source of transparent-box and mutation evidence (section 1.3.3.4).
 
@@ -90,12 +92,18 @@ This refines the design in Extensibility.md and Configurability.md; it does not 
 
 ### Elements to analyse — Iteration 3
 
-- **Policies (`StandardLendingPolicy`, `AdaptiveLendingPolicy`):** pure rule evaluation over a history snapshot and a parameter object; the main class and mutation SUTs.
-- **Parameter objects:** constructor validation of the specification constraints (2.x, 3.5, 4.2); domain-like rules suitable for transparent-box tests.
-- **Selector and selection rules:** ordered evaluation and Standard default; boundary cases of LP-SEL1.
-- **History provider:** translation of stored lendings into the snapshot using the injected clock; needs a repository double or a test database.
-- **`Lending` entity:** limit date, overdue days and fines currently computed with `LocalDate.now()`; affected domain class for transparent-box tests once the date is supplied.
-- **`LendingServiceImpl` and REST workflow:** delegation, rejection reason and persistence; collaboration and system SUTs.
+Testability is analysed as controllability (can a test put the element in a known state and supply known inputs?) and observability (can a test read the outcome without side effects or string matching?). Evidence is from the current source tree.
+
+| Element (current) | Controllability obstacle | Observability obstacle | Architectural change needed |
+|---|---|---|---|
+| Time source: `Lending` (constructor, `setReturned`, `getDaysDelayed`, `getDaysUntilReturn`), `LendingNumber` (year check and default year), `SpringDataLendingRepository` (`CURRENT_DATE`, `LocalDate.now()` in overdue and average queries), `LendingServiceImpl.searchLendings` | "Today" cannot be fixed, so overdue, due-date and window boundaries cannot be reproduced; tests fabricate past dates with `Lending.newBootstrappingLending`, a production factory used as a test seam. | Results change with the day the tests run. | One time source supplied from outside (injected `Clock`); domain methods receive the reference date; repository queries take dates as parameters. |
+| Configuration: `@Value` fields and `@PropertySource` in `LendingServiceImpl`; `LendingTest` loads `library.properties` through `@PropertySource` | The service cannot be built with chosen values without the Spring context; constraints between values are not checked anywhere. | Effective values are not visible to a test. | Immutable parameter objects with constructor validation, injected into policies and service; binding and fail-fast validation only at the application edge (QAS7). |
+| Policy rules inside `LendingServiceImpl.create` (overdue check, hardcoded limit of 3, duration from `lendingDurationInDays`) | A rule runs only together with four repositories, the book and reader lookup and the save. | Outcome is only a `LendingForbiddenException` message string; the applied limit or period is not exposed. | Pure policy classes evaluating a request over a snapshot and parameters; structured `PolicyDecision` (allowed or rejected with reason, duration) (EXT-LP-01/02). |
+| Reader lending facts (active, overdue, completed, on time in a window) collected by iterating `listOutstandingByReaderNumber` in the service | Facts can only be arranged by persisting lendings; the history window has no query. | Facts are not a value a test can inspect. | Read-only `ReaderLendingHistory` snapshot built by a provider behind a narrow port; rules read only the snapshot (EXT-LP-04). |
+| `LendingServiceImpl` (constructor-injected repositories mixed with `@Value` fields; `Fine` created and saved inside `setReturned`) | Not constructible with doubles alone because of the field-injected values; needs the context. | No class-level test of the service exists; behaviour is checked only through a real database. | Service reduced to orchestration with constructor-injected collaborators only (provider, selector, repositories); no values read from the environment (EXT-LP-05). |
+| `Lending` entity (JPA-annotated; real-date calculations of limit date, days delayed, fine) | Real values only for the run date. | Derived values (`getDaysOverdue`) are recomputed on read from the clock. | Keep invariants (CON-LP-1); supply the reference date to date-dependent methods so the entity is a transparent-box SUT with fixed dates. |
+| Selector and selection rules | Do not exist yet; selection today is the hardcoded rule. | | New and pure by design (Configurability/Extensibility); ordered rules and Standard default tested alone (QAS8). |
+| Test structure (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`: `@SpringBootTest`, real repositories, real dates) | Integration-level setup for every case. | A failure cannot be attributed to a rule, to wiring or to persistence. | Bottom-up test order and a unit-before-integration gate (TST-LP-07, CON-TST-10). |
 
 ## Step 4 — Choose one or more design concepts that satisfy the inputs of the iteration
 
@@ -167,17 +175,27 @@ A is the proposed design: it is the approach QAS10 describes (channels replaced 
 
 ### Design alternatives — Iteration 3
 
-Question: how can date-dependent lending rules be tested with a known "today" (QAS11)?
+Question: which architectural changes make the lending rules, parameter constraints and selection controllable and observable at class level, and in what order are they tested (QAS11)?
 
 | Alternative | Organization | Benefits | Costs / limitations |
 |---|---|---|---|
-| A — Keep `LocalDate.now()` and mock it statically in tests | Static mocking of the time API in each test. | No production change. | Tests depend on a mocking-library feature; time stays hidden in many classes; easy to forget in broader tests; does not help system tests. |
-| B — Inject a `java.time.Clock`; the history snapshot carries the reference date | The history provider, `Lending` creation and overdue checks obtain the date from one injected `Clock`; policies and rules read the date from the snapshot. | One explicit time source; policies stay pure and need no clock; collaboration and system tests use a fixed clock bean. | Production code changes once (constructors and the service); `Lending` methods that use `LocalDate.now()` need a date parameter or the clock. |
-| C — Compute every date relative to the real date in assertions | Tests calculate expected values from the real current date. | No design change. | Boundary cases (overdue exactly today, window limits) cannot be fixed; results vary by run date; already the weakness of current tests. |
+| A — No production change; add tests only | Spring-context tests with real repositories and the real date, static mocking of the time API, `ReflectionTestUtils` to set `@Value` fields. | No design cost. | Rules stay inside the service and cannot be tested alone; time stays hidden; tests are integration tests by necessity, so failures cannot be localised; QAS11 (no Spring, no database for class tests) cannot be met. |
+| B — Seams on the existing classes only | Inject a `Clock`, constructor-inject parameter values, pass dates to `Lending`; rules remain in `LendingServiceImpl`. | Small change; time and values become controllable. | The service still mixes rules, repository access and persistence, so a rule is tested only through the whole service with all repositories doubled; observability unchanged (exception strings); adding a policy changes the service (QAS3). |
+| C — Seams plus extracted pure policy, selector, history port and parameter objects (selected) | B, and the rules move into pure classes over a snapshot and parameters, returning a structured decision, as already proposed in Extensibility/Configurability. | Every rule, constraint and selection condition is a single-class SUT without Spring or database; the service is a thin orchestrator tested with doubles; one design serves QAS3, QAS7, QAS8 and QAS11. | More types and fixtures; one-time change to `Lending`, `LendingNumber`, repository queries and the service. |
 
-### Selected alternative — B
+Sub-decision, time source:
 
-B is the proposed design: a single injected `Clock` makes "today" a controllable input, and the snapshot passes it to policies and rules so they remain free of time and framework dependencies (CON-LP-4). The cost is a one-time change to how `Lending` and the service obtain the date. A and C are rejected because they keep time implicit and cannot reproduce boundary dates.
+| Option | Outcome |
+|---|---|
+| Static mocking of `LocalDate.now()` in tests | Rejected: time stays hidden in many classes, depends on a mocking-library feature, does not help system tests. |
+| Expected values computed from the real date | Rejected: boundary dates (overdue exactly today, window limits) cannot be fixed; the weakness of the current tests. |
+| One injected `java.time.Clock`; the snapshot carries the reference date (selected) | Policies and rules stay pure and need no clock; collaboration and system tests use a fixed clock bean. |
+
+### Selected alternative — C
+
+C is the proposed design. A single injected `Clock` makes "today" a controllable input, immutable parameter objects make configuration an explicit input, the snapshot passes facts and the reference date to policies and rules so they stay free of time and framework dependencies (CON-LP-4), and the structured decision makes the outcome observable. A is rejected because it cannot reach class-level isolation; B is rejected because it leaves the rules unreachable except through the whole service and does not reduce the cost of adding a policy.
+
+Test order is part of the decision. Following the unit-versus-integration distinction in the software testing material (*Something about Software Testing v6*, "Unit vs integration tests"), class-level tests of every element are written and passing before a test that combines those elements is written. An integration test written first cannot say whether a failure comes from a rule, from wiring or from persistence, and the current lending package shows that state (integration tests only). The dependency order of the design gives the testing order: parameter objects, then policies and rules, then selector, then history provider (repository double), then service (collaborator doubles), then collaboration, then system.
 
 #### Selected catalogue tactics — Iteration 3
 
@@ -206,12 +224,15 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | TST-NOT-04 | Test preference validation and dispatch as separate class SUTs: a choice including a disabled channel is rejected naming it; dispatch uses the intersection of enabled and chosen channels. | One reader's choice does not affect another (QAS6, CFG-NOT-02, CFG-NOT-03). |
 | TST-NOT-05 | Run collaboration and system tests with test properties, a test database with known readers and preferences, and recording or local delivery doubles. | Exercises real wiring and persistence while guaranteeing 0 real messages (QAS10). |
 | TST-NOT-06 | Apply mutation testing to channel implementations, preference validation and dispatch; review surviving mutants on the intersection and on the enabled-set check. | A wrong set operation or a skipped check silently sends too many or too few messages. |
-| TST-LP-01 | Inject one `java.time.Clock`; the history snapshot carries the reference date to policies and rules. | Reproducible boundary dates; policies stay free of time and Spring (QAS11, CON-LP-4). |
-| TST-LP-02 | Test each policy, rule, the selector and each parameter object as a single-class SUT with fixed parameter objects and snapshot fixtures. | Every rule gets a passing and a failing case without Spring or database (QAS11). |
-| TST-LP-03 | Test `LendingServiceImpl` with a mocked history provider, selector and policy; assert delegation, rejection reason and that nothing is saved when rejected. | Verifies the service does not contain policy rules (EXT-LP-05, QAS3). |
-| TST-LP-04 | Test parameter validation at two levels: parameter-object constructors (class) and application startup with invalid test properties (collaboration). | Every constraint violation is detected and reported at startup (QAS7, LP-CFG2). |
-| TST-LP-05 | Run collaboration and system tests with a dedicated test database seeded with known histories, test properties and a fixed clock bean. | Exercises real wiring, queries and binding without depending on the run date. |
-| TST-LP-06 | Apply mutation testing to policies, rules, selector and parameter objects; review surviving mutants on boundary comparisons. | Off-by-one errors on thresholds and windows are the most likely defects (LP-A2, LP-SEL1). |
+| TST-LP-01 | Make time an injected input: one `java.time.Clock` bean; `Lending`, `LendingNumber` and the repository date queries receive the reference date or the clock; the history snapshot carries the reference date to policies and rules. | Controllability: reproducible boundary dates; policies stay free of time and Spring (QAS11, CON-LP-4). |
+| TST-LP-02 | Make configuration an explicit input: immutable parameter objects with constructor validation, injected into policies; `@Value`/`@PropertySource` only at the binding edge, never in the service, policies or domain. | Controllability: a rule is built with chosen values without Spring; constraints are checkable alone (QAS7, LP-CFG2). |
+| TST-LP-03 | Extract the rules from `LendingServiceImpl` into pure policy classes returning a structured `PolicyDecision` (allowed or rejected with reason code, duration). | Observability: tests assert the decision, not an exception message; each rule is a single-class SUT (QAS11, EXT-LP-01/02). |
+| TST-LP-04 | Provide reader facts through a read-only `ReaderLendingHistory` snapshot built by a provider behind a narrow port; rules read only the snapshot. | Controllability: histories are built directly in class tests; persistence is needed only for the provider and the collaboration level (EXT-LP-04). |
+| TST-LP-05 | Reduce `LendingServiceImpl` to orchestration with constructor-injected collaborators only (provider, selector, repositories); nothing read from the environment. | The service is testable with collaborator doubles and verifies that it holds no policy rules (EXT-LP-05, QAS3). |
+| TST-LP-06 | Fail-fast validation at startup: invalid parameter values stop the application with a message naming the parameter and constraint. | Executable assertion tested in the constructors (class) and at startup with invalid test properties (collaboration) (QAS7). |
+| TST-LP-07 | Bottom-up test order with a unit-before-integration gate: no collaboration or system test of a component before the class-level tests of every production class it includes exist and pass; unit and integration suites run as separate stages so a unit failure stops the build before integration tests start. | Defect localisation; avoids integration tests that stand in for missing unit tests (CON-TST-10). |
+| TST-LP-08 | Collaboration and system tests use a dedicated test database seeded with known histories, test properties and a fixed clock bean. | Real wiring, queries and binding without depending on the run date (Sandbox). |
+| TST-LP-09 | Apply mutation testing to policies, rules, selector and parameter objects; review surviving mutants on boundary comparisons. | Off-by-one errors on thresholds and windows are the most likely defects (LP-A2, LP-SEL1). |
 
 ### Constraints
 
@@ -226,6 +247,8 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | CON-TST-7 | Tests affected by the open faculty questions (Adaptive count before/after, renewal duration, history window boundaries, overdue renewal under Adaptive) are written once the answers are known; no expected value assumes an answer. | ADD.md pending questions, CON-LP-3 |
 | CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. | QAS10 |
 | CON-TST-9 | Tests depending on undefined notification behaviour (channel failure, webhook target, behaviour with no enabled channel, trigger of due-date and overdue events) are written once those are decided; no expected value assumes an answer. | Extensibility.md and Configurability.md pending decisions |
+| CON-TST-10 | A collaboration or system test is not written, and does not count as evidence, for a component whose included production classes lack passing class-level tests. Class tests precede integration tests in each iteration. | Reported colleague guidance; unit-versus-integration material |
+| CON-TST-11 | Every seam introduced for testability (clock, parameter objects, port, decision type) must also serve the production design; no test-only methods or flags in production code, and no loosening of `Lending` invariants. | CON-TST-5, CON-LP-1 |
 
 ### Responsibility assignment rationale
 
@@ -291,24 +314,28 @@ Testability — Notification methods (memo to be added in `Technical Memos/Testa
 
 | Element | Responsibility / rationale | Properties | Related drivers |
 |---|---|---|---|
-| `StandardLendingPolicy`, `AdaptiveLendingPolicy` | Evaluate a request from a snapshot and parameters. | Pure class SUT; no clock, Spring or repository | QAS11, TST-LP-02 |
-| Parameter objects | Validate their constraints on construction. | Transparent-box and mutation SUT | QAS7, TST-LP-04 |
+| `StandardLendingPolicy`, `AdaptiveLendingPolicy` | Evaluate a request from a snapshot and parameters and return a `PolicyDecision`. | Pure class SUT; no clock, Spring or repository | QAS11, TST-LP-03 |
+| Parameter objects | Validate their constraints on construction. | Transparent-box and mutation SUT | QAS7, TST-LP-02, TST-LP-06 |
 | `LendingPolicySelector`, `AdaptiveEligibilityRule` | Choose the policy from the snapshot; Standard by default. | Class SUT with rule/policy doubles for the selector | QAS8, QAS11 |
-| History provider | Build the snapshot from stored lendings and the clock. | Class SUT with repository double; collaboration with test database | QAS11, TST-LP-01 |
-| `LendingServiceImpl` | Delegate and act on the decision. | Class SUT with mocked collaborators | QAS3, TST-LP-03 |
+| History provider | Build the snapshot from stored lendings and the clock. | Class SUT with repository double; collaboration with test database | QAS11, TST-LP-01, TST-LP-04 |
+| `LendingServiceImpl` | Delegate and act on the decision. | Class SUT with mocked collaborators | QAS3, TST-LP-05 |
 | Fixed clock and fixtures | Supply "today", histories and parameter values. | Test-only; never replaces the SUT | CON-TST-6 |
 
 ### SUT boundaries and test categories — Iteration 3
 
-| Category | SUT / real production elements | Controlled outside the boundary | Verification |
-|---|---|---|---|
-| Functional opaque-box — classes | One policy, rule, selector, parameter object, history provider or the service at a time | Snapshot fixtures, fixed parameter objects, fixed clock, mocked collaborators | Allowed/rejected decision, duration, reason, selected policy, validation errors |
-| Functional transparent-box — domain classes | Parameter objects and `Lending` (limit date, overdue days, fine) | Fixed dates; prepared collaborators | One case per branch and boundary of each constraint and date calculation |
-| Mutation — classes | Policies, rules, selector, parameter objects | Same as class tests | Mutants on comparisons (`<`, `<=`), thresholds and default selection are killed |
-| Functional opaque-box — collaboration | Controller + real service, provider, selector, policies, repository and parameter binding | Test database with seeded histories, test properties, fixed clock bean | HTTP result, persisted limit date, rejection reason, policy re-evaluated between two requests; invalid properties stop context startup |
-| Functional opaque-box — system | Running backend through HTTP with security and persistence | Independent test data, test properties, fixed clock | End-to-end lending/rejection and the effect of a changed parameter after restart |
+The order column is the testing order (TST-LP-07): a level starts only when the previous levels pass for every class it includes (CON-TST-10). These boundaries identify the tests of section 1.3.3.4 to implement; the architectural changes above are what make them possible.
+
+| Order | Category | SUT / real production elements | Controlled outside the boundary | Verification |
+|---|---|---|---|---|
+| 1 | Functional opaque-box — classes | One policy, rule, selector, parameter object, history provider or the service at a time | Snapshot fixtures, fixed parameter objects, fixed clock, mocked collaborators | Allowed/rejected decision, duration, reason, selected policy, validation errors |
+| 1 | Functional transparent-box — domain classes | Parameter objects and `Lending` (limit date, overdue days, fine) | Fixed dates; prepared collaborators | One case per branch and boundary of each constraint and date calculation |
+| 2 | Mutation — classes | Policies, rules, selector, parameter objects | Same as class tests | Mutants on comparisons (`<`, `<=`), thresholds and default selection are killed; run only on classes whose functional tests pass |
+| 3 | Functional opaque-box — collaboration | Controller + real service, provider, selector, policies, repository and parameter binding | Test database with seeded histories, test properties, fixed clock bean | HTTP result, persisted limit date, rejection reason, policy re-evaluated between two requests; invalid properties stop context startup |
+| 4 | Functional opaque-box — system | Running backend through HTTP with security and persistence | Independent test data, test properties, fixed clock | End-to-end lending/rejection and the effect of a changed parameter after restart |
 
 ### Planned cases — Arrange, Act, Assert — Iteration 3
+
+Representative cases that the architecture above makes expressible; they are the basis for the implementation of section 1.3.3.4, not a complete suite.
 
 | Case | SUT / level | Arrange → Act → Assert |
 |---|---|---|
@@ -407,7 +434,7 @@ The columns are independent status lists: cells on the same row are not related.
 |---|---|---|
 | | Bibliographic isolation — QAS9: SUT boundaries, tactics and test categories proposed; concrete contracts, fixture examples and expected results still need refinement |  |
 | | Notification testability — QAS10: recording doubles, delivery boundary, SUT boundaries, test categories and AAA cases proposed; dispatch location, event trigger, failure behaviour and boundary sketches still pending | |
-| | Lending policy testability — QAS11: clock injection, SUT boundaries, test categories and AAA cases proposed; cases affected by open faculty questions and fixture formats still pending | |
+| | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service), bottom-up test order and SUT boundaries decided; nothing implemented; cases affected by open faculty questions and fixture formats still pending | |
 
 ## Step 8 — Refine as necessary
 
@@ -415,4 +442,4 @@ Resolve the pending contracts with concrete examples; update the memo and bounda
 
 For notifications: decide the delivery boundary, the dispatch location and the failure behaviour first; then write the recording-double class tests for dispatch and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests. Draw the notification boundary sketches and add the testability memo.
 
-For lending: introduce the clock first, then add class tests for parameter objects and policies before refactoring `LendingServiceImpl`; keep the existing lending tests passing as a regression check, and update the expected values once the faculty answers the open questions.
+For lending: apply the architectural changes in dependency order and write the class-level tests of each element before the next element, and before any collaboration test that includes it: clock, parameter objects, policies and rules, selector, history provider, then the thin `LendingServiceImpl`. Keep the existing lending integration tests passing as a regression check while the service is refactored, add the missing class-level service test first, and update expected values once the faculty answers the open questions. Section 1.3.3.4 is then implementation only, from the SUT boundaries and cases above.
