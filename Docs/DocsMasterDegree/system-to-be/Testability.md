@@ -396,16 +396,26 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 
 ## Step 6 — Sketch views and record decisions
 
-### Class isolation boundary
+### Bibliographic Source isolation boundary
 
 ![Bibliographic class isolation boundary](Images/BibliographicClassIsolation.png)
 
-### Collaboration boundary
+### Bibliographic Source boundary
 
 ![Bibliographic collaboration boundary](Images/BibliographicCollaborationBoundary.png)
 
 The second sketch concerns retrieval; registration suites extend the declared SUT with the relevant domain and repository components. System tests invoke a running backend via HTTP instead of invoking the controller directly. These are test-boundary sketches, not replacements for full implementation views.
 
+
+### Notification Method isolation boundary
+
+![Notification Method class isolation boundary](Images/NotificationMethodsCollaborationBoundary.png)
+
+### Notification Method collaboration boundary
+
+![Notification Method collaboration boundary](Images/NotificationMethodsCollaborationBoundary.png)
+
+Both of these diagram take a more abstract approach as each implementation of INotificationService will have specific behaviours that need their own tests, but the general workings of each notification methods remain the same. Actual notification mechanisms are not included in the SUT as tests should not send any real notifications.
 ### Lending policy class isolation boundary
 
 ![Lending policy class isolation boundary](Images/LendingPolicyClassIsolation.png)
