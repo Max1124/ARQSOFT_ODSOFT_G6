@@ -1,0 +1,46 @@
+@startuml
+!pragma layout smetana
+skinparam shadowing false
+skinparam backgroundColor white
+hide empty members
+title Bibliographic testability - proposed class design
+class BibliographicService {
+ +BibliographicService(sources: List<BibliographicSource>, merge: BibliographicMerge)
+ +retrieve(isbn): BibliographicData
+}
+interface BibliographicSource {
+ +lookupByIsbn(isbn): SourceOutcome
+}
+class BibliographicMerge {
+ +combine(results): BibliographicData
+}
+class GoogleBooksAdapter {
+ +GoogleBooksAdapter(transport: BibliographicTransport, mapper: GoogleBooksMapper)
+ +lookupByIsbn(isbn): SourceOutcome
+}
+class OpenLibraryAdapter {
+ +OpenLibraryAdapter(transport: BibliographicTransport, mapper: OpenLibraryMapper)
+ +lookupByIsbn(isbn): SourceOutcome
+}
+interface BibliographicTransport {
+ +execute(request): TransportResponse
+}
+class HttpBibliographicTransport {
+ +execute(request): TransportResponse
+}
+class GoogleBooksMapper {
+ +map(response): BibliographicData
+}
+class OpenLibraryMapper {
+ +map(response): BibliographicData
+}
+BibliographicService --> "1..*" BibliographicSource : injected sources
+BibliographicService --> BibliographicMerge : injected
+GoogleBooksAdapter ..|> BibliographicSource
+OpenLibraryAdapter ..|> BibliographicSource
+GoogleBooksAdapter --> BibliographicTransport : injected
+OpenLibraryAdapter --> BibliographicTransport : injected
+GoogleBooksAdapter --> GoogleBooksMapper : injected
+OpenLibraryAdapter --> OpenLibraryMapper : injected
+HttpBibliographicTransport ..|> BibliographicTransport
+@enduml
