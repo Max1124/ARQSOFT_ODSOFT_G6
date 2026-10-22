@@ -11,7 +11,11 @@ import pt.psoft.g1.psoftg1.lendingmanagement.model.Fine;
 import pt.psoft.g1.psoftg1.lendingmanagement.model.Lending;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.FineRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
-import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.StandardPolicyParameters;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicy;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicySelector;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.PolicyDecision;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistory;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistoryProvider;
 import pt.psoft.g1.psoftg1.readermanagement.repositories.ReaderRepository;
 import pt.psoft.g1.psoftg1.shared.services.Page;
 
@@ -23,7 +27,6 @@ import java.util.Locale;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @PropertySource({"classpath:config/library.properties"})
 public class LendingServiceImpl implements LendingService{
     private final LendingRepository lendingRepository;
@@ -31,11 +34,29 @@ public class LendingServiceImpl implements LendingService{
     private final BookRepository bookRepository;
     private final ReaderRepository readerRepository;
     private final Clock clock; // single time source, so tests can inject a fixed clock (QAS11)
+    private final ReaderLendingHistoryProvider historyProvider;
+    private final LendingPolicySelector policySelector;
+    private final int fineValuePerDayInCents;
 
-    private final StandardPolicyParameters standardPolicyParameters; // limit and period now come from validated setup configuration (spec 5, QAS7)
-
-    @Value("${fineValuePerDayInCents}")
-    private int fineValuePerDayInCents;
+    // Explicit constructor (was Lombok + @Value field): every dependency, including the fine value, is passed in,
+    // so the service can be built with test doubles and no Spring context (QAS11, TST-LP-05).
+    public LendingServiceImpl(LendingRepository lendingRepository,
+                              FineRepository fineRepository,
+                              BookRepository bookRepository,
+                              ReaderRepository readerRepository,
+                              Clock clock,
+                              ReaderLendingHistoryProvider historyProvider,
+                              LendingPolicySelector policySelector,
+                              @Value("${fineValuePerDayInCents}") int fineValuePerDayInCents) {
+        this.lendingRepository = lendingRepository;
+        this.fineRepository = fineRepository;
+        this.bookRepository = bookRepository;
+        this.readerRepository = readerRepository;
+        this.clock = clock;
+        this.historyProvider = historyProvider;
+        this.policySelector = policySelector;
+        this.fineValuePerDayInCents = fineValuePerDayInCents;
+    }
 
     @Override
     public Optional<Lending> findByLendingNumber(String lendingNumber){
@@ -60,21 +81,13 @@ public class LendingServiceImpl implements LendingService{
 
     @Override
     public Lending create(final CreateLendingRequest resource) {
-        final LocalDate today = LocalDate.now(clock); // read once so every date check in this request agrees
-        int count = 0;
-
-        Iterable<Lending> lendingList = lendingRepository.listOutstandingByReaderNumber(resource.getReaderNumber());
-        for (Lending lending : lendingList) {
-            //Business rule: cannot create a lending if user has late outstanding books to return.
-            if (lending.getDaysDelayed(today) > 0) {
-                throw new LendingForbiddenException("Reader has book(s) past their due date");
-            }
-            count++;
-            //Business rule: cannot create a lending if user already has the maximum of outstanding books to return.
-            // The limit was the literal 3; it is now the configurable MaxActiveLendings (spec 2.1).
-            if (count >= standardPolicyParameters.maxActiveLendings()) {
-                throw new LendingForbiddenException("Reader has " + count + " books outstanding already");
-            }
+        // The service only orchestrates: facts, policy choice and the rules live in the policy package (EXT-LP-05).
+        final ReaderLendingHistory history = historyProvider.historyOf(resource.getReaderNumber());
+        final LendingPolicy policy = policySelector.select(history);
+        final PolicyDecision decision = policy.evaluateNewLending(history);
+        // The reason travels in the exception so the REST 403 tells the reader why (US13).
+        if (!decision.allowed()) {
+            throw new LendingForbiddenException(decision.reason().message());
         }
 
         final var b = bookRepository.findByIsbn(resource.getIsbn())
@@ -82,7 +95,8 @@ public class LendingServiceImpl implements LendingService{
         final var r = readerRepository.findByReaderNumber(resource.getReaderNumber())
                 .orElseThrow(() -> new NotFoundException("Reader not found"));
         int seq = lendingRepository.getCountFromCurrentYear()+1;
-        final Lending l = new Lending(b,r,seq, standardPolicyParameters.lendingPeriodDays(), fineValuePerDayInCents, today);
+        // Period comes from the decision and the date from the snapshot, so the lending matches what was evaluated.
+        final Lending l = new Lending(b,r,seq, decision.periodDays(), fineValuePerDayInCents, history.referenceDate());
 
         return lendingRepository.save(l);
     }
