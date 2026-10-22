@@ -391,6 +391,8 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 
 ![Bibliographic testability class design](Images/BibliographicTestabilityClasses.png)
 
+The diagram shows how bibliographic classes receive their dependencies through constructors. Communication, mapping and merge have separate responsibilities. This allows each class to be tested with controlled collaborators, without calling real external APIs.
+
 ### Notification Method isolation boundary
 
 ![Notification Method class isolation boundary](Images/NotificationMethodsCollaborationBoundary.png)
