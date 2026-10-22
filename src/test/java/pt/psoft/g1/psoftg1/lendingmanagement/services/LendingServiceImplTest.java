@@ -166,6 +166,45 @@ class LendingServiceImplTest {
         assertDoesNotThrow(
                 () -> lendingService.setReturned(year + "/" + seq, request, notReturnedLending.getVersion()));
     }
+    // Real wiring (Standard policy from library.properties): renewal adds 7 days, at most 2 times (US14).
+    @Test
+    void testRenewUsesStandardPolicyAndStopsAtMaxRenewals() {
+        var active = lendingRepository.save(Lending.newBootstrappingLending(book,
+                readerDetails,
+                LocalDate.now().getYear(),
+                777,
+                LocalDate.now().minusDays(2),
+                null,
+                15,
+                300));
+        String number = LocalDate.now().getYear() + "/777";
+
+        var first = lendingService.renew(number, currentVersion(number));
+        assertThat(first.getLimitDate()).isEqualTo(LocalDate.now().plusDays(13 + 7));
+        var second = lendingService.renew(number, currentVersion(number));
+        assertThat(second.getRenewals()).isEqualTo(2);
+
+        assertThrows(LendingForbiddenException.class, () -> lendingService.renew(number, currentVersion(number)));
+    }
+
+    // Inside one transaction the version only moves on flush, so read it through a query like a client would via ETag.
+    private long currentVersion(String number) {
+        return lendingRepository.findByLendingNumber(number).orElseThrow().getVersion();
+    }
+
+    @Test
+    void testRenewRejectsAnOverdueLending() {
+        lendingRepository.save(Lending.newBootstrappingLending(book,
+                readerDetails,
+                2024,
+                776,
+                LocalDate.of(2024, 3, 1),
+                null,
+                15,
+                300));
+
+        assertThrows(LendingForbiddenException.class, () -> lendingService.renew("2024/776", 0));
+    }
 /*
     @Test
     void testGetAverageDuration() {

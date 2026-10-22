@@ -13,6 +13,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.repositories.FineRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicy;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicySelector;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingToRenew;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.PolicyDecision;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistory;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistoryProvider;
@@ -115,6 +116,29 @@ public class LendingServiceImpl implements LendingService{
             fineRepository.save(fine);
         }
 
+        return lendingRepository.save(lending);
+    }
+
+    @Override
+    public Lending renew(final String lendingNumber, final long desiredVersion) {
+        final var lending = lendingRepository.findByLendingNumber(lendingNumber)
+                .orElseThrow(() -> new NotFoundException("Cannot renew lending with this lending number"));
+
+        // Checked before asking a policy: a returned lending has nothing to renew, whatever the policy is.
+        if (lending.getReturnedDate() != null) {
+            throw new LendingForbiddenException("A returned lending cannot be renewed");
+        }
+
+        // Selection is repeated at renewal, so a reader whose history changed is evaluated by the current policy (LP-SEL2).
+        final ReaderLendingHistory history = historyProvider.historyOf(lending.getReaderDetails().getReaderNumber());
+        final LendingPolicy policy = policySelector.select(history);
+        final boolean overdue = lending.getDaysDelayed(history.referenceDate()) > 0;
+        final PolicyDecision decision = policy.evaluateRenewal(new LendingToRenew(overdue, lending.getRenewals()), history);
+        if (!decision.allowed()) {
+            throw new LendingForbiddenException(decision.reason().message());
+        }
+
+        lending.renew(desiredVersion, decision.periodDays(), history.referenceDate());
         return lendingRepository.save(lending);
     }
 

@@ -14,6 +14,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.repositories.FineRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.repositories.LendingRepository;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicy;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingPolicySelector;
+import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingToRenew;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.PolicyDecision;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistory;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistoryProvider;
@@ -133,5 +134,68 @@ class LendingServiceImplPolicyTest {
 
         assertThatThrownBy(() -> service.create(request())).isInstanceOf(NotFoundException.class);
         verify(lendingRepository, never()).save(any());
+    }
+
+    // Renewal: the lending's own reader number is used, so these stubs do not depend on the current year.
+    private Lending activeLending() {
+        Lending lending = new Lending(book, reader, 1, 15, 200, TODAY.minusDays(5));
+        when(lendingRepository.findByLendingNumber(lending.getLendingNumber())).thenReturn(Optional.of(lending));
+        when(historyProvider.historyOf(reader.getReaderNumber())).thenReturn(HISTORY);
+        return lending;
+    }
+
+    @Test
+    void allowedRenewalExtendsTheLimitDateByTheDecidedPeriodAndSaves() {
+        Lending lending = activeLending();
+        when(chosenPolicy.evaluateRenewal(new LendingToRenew(false, 0), HISTORY)).thenReturn(PolicyDecision.allow(7));
+
+        Lending renewed = service.renew(lending.getLendingNumber(), 0);
+
+        assertThat(renewed.getLimitDate()).isEqualTo(TODAY.minusDays(5).plusDays(15 + 7));
+        assertThat(renewed.getRenewals()).isEqualTo(1);
+        verify(lendingRepository).save(lending);
+    }
+
+    @Test
+    void renewalPolicyReceivesTheOverdueFlagAndRenewalsMade() {
+        Lending lending = new Lending(book, reader, 1, 3, 200, TODAY.minusDays(5)); // limit date 2 days ago
+        when(lendingRepository.findByLendingNumber(lending.getLendingNumber())).thenReturn(Optional.of(lending));
+        when(historyProvider.historyOf(reader.getReaderNumber())).thenReturn(HISTORY);
+        when(chosenPolicy.evaluateRenewal(new LendingToRenew(true, 0), HISTORY))
+                .thenReturn(PolicyDecision.reject(RejectionReason.LENDING_OVERDUE));
+
+        assertThatThrownBy(() -> service.renew(lending.getLendingNumber(), 0))
+                .isInstanceOf(LendingForbiddenException.class)
+                .hasMessage(RejectionReason.LENDING_OVERDUE.message());
+        verify(lendingRepository, never()).save(any());
+    }
+
+    @Test
+    void rejectedRenewalLeavesTheLendingUntouched() {
+        Lending lending = activeLending();
+        when(chosenPolicy.evaluateRenewal(new LendingToRenew(false, 0), HISTORY))
+                .thenReturn(PolicyDecision.reject(RejectionReason.MAX_RENEWALS));
+
+        assertThatThrownBy(() -> service.renew(lending.getLendingNumber(), 0))
+                .isInstanceOf(LendingForbiddenException.class)
+                .hasMessage(RejectionReason.MAX_RENEWALS.message());
+        assertThat(lending.getRenewals()).isZero();
+        verify(lendingRepository, never()).save(any());
+    }
+
+    @Test
+    void returnedLendingIsRejectedWithoutConsultingAnyPolicy() {
+        Lending lending = activeLending();
+        lending.setReturned(0, null, TODAY);
+
+        assertThatThrownBy(() -> service.renew(lending.getLendingNumber(), 0)).isInstanceOf(LendingForbiddenException.class);
+        verifyNoInteractions(selector, chosenPolicy);
+    }
+
+    @Test
+    void renewingAnUnknownLendingIsNotFound() {
+        when(lendingRepository.findByLendingNumber("2026/99")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.renew("2026/99", 0)).isInstanceOf(NotFoundException.class);
     }
 }

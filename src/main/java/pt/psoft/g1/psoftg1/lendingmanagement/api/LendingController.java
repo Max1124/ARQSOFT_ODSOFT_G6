@@ -138,6 +138,44 @@ public class LendingController {
                 .body(lendingViewMapper.toLendingView(lending));
     }
 
+    @Operation(summary = "Renews a lending, extending its limit date as decided by the reader's lending policy")
+    @PostMapping(value = "/{year}/{seq}/renewal")
+    public ResponseEntity<LendingView> renewLending(
+            final WebRequest request,
+            final Authentication authentication,
+            @PathVariable("year")
+                @Parameter(description = "The year component of the Lending to renew")
+                final Integer year,
+            @PathVariable("seq")
+                @Parameter(description = "The sequential component of the Lending to renew")
+                final Integer seq) {
+        // Same conditional-request rule as the return endpoint, so a stale client cannot renew by mistake.
+        final String ifMatchValue = request.getHeader(ConcurrencyService.IF_MATCH);
+        if (ifMatchValue == null || ifMatchValue.isEmpty() || ifMatchValue.equals("null")) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "You must issue a conditional POST using 'if-match'");
+        }
+        String ln = year + "/" + seq;
+        final var maybeLending = lendingService.findByLendingNumber(ln)
+                .orElseThrow(() -> new NotFoundException(Lending.class, ln));
+
+        User loggedUser = userService.getAuthenticatedUser(authentication);
+        final var loggedReaderDetails = readerService.findByUsername(loggedUser.getUsername())
+                .orElseThrow(() -> new NotFoundException(ReaderDetails.class, loggedUser.getUsername()));
+
+        // A reader may only renew their own lendings.
+        if (!Objects.equals(loggedReaderDetails.getReaderNumber(), maybeLending.getReaderDetails().getReaderNumber())) {
+            throw new AccessDeniedException("Reader does not have permission to renew this lending");
+        }
+
+        final var lending = lendingService.renew(ln, concurrencyService.getVersionFromIfMatchHeader(ifMatchValue));
+
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/hal+json"))
+                .eTag(Long.toString(lending.getVersion()))
+                .body(lendingViewMapper.toLendingView(lending));
+    }
+
     @Operation(summary = "Get average lendings duration")
     @GetMapping(value = "/avgDuration")
     public @ResponseBody ResponseEntity<LendingsAverageDurationView> getAvgDuration() {

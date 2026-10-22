@@ -134,6 +134,61 @@ class LendingTest {
     }
 
     @Test
+    void renewExtendsTheLimitDateAndCountsTheRenewal(){
+        Lending lending = newLending();
+        lending.renew(0, 7, TODAY.plusDays(3));
+        assertEquals(TODAY.plusDays(LENDING_DURATION + 7), lending.getLimitDate());
+        assertEquals(1, lending.getRenewals());
+    }
+
+    @Test
+    void newLendingHasNoRenewals(){
+        assertEquals(0, newLending().getRenewals());
+    }
+
+    @Test
+    void renewalsAccumulate(){
+        Lending lending = newLending();
+        lending.renew(0, 7, TODAY);
+        lending.renew(0, 7, TODAY);
+        assertEquals(TODAY.plusDays(LENDING_DURATION + 14), lending.getLimitDate());
+        assertEquals(2, lending.getRenewals());
+    }
+
+    @Test
+    void renewOnTheLimitDateIsAllowed(){
+        Lending lending = newLending();
+        lending.renew(0, 7, TODAY.plusDays(LENDING_DURATION));
+        assertEquals(1, lending.getRenewals());
+    }
+
+    @Test
+    void overdueLendingCannotBeRenewed(){
+        Lending lending = newLending();
+        assertThrows(IllegalArgumentException.class, () -> lending.renew(0, 7, TODAY.plusDays(LENDING_DURATION + 1)));
+        assertEquals(0, lending.getRenewals());
+    }
+
+    @Test
+    void returnedLendingCannotBeRenewed(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY);
+        assertThrows(IllegalArgumentException.class, () -> lending.renew(0, 7, TODAY));
+    }
+
+    @Test
+    void renewWithStaleVersionIsRejected(){
+        Lending lending = newLending();
+        assertThrows(org.hibernate.StaleObjectStateException.class, () -> lending.renew(5, 7, TODAY));
+    }
+
+    @Test
+    void renewNeedsAPositiveExtension(){
+        Lending lending = newLending();
+        assertThrows(IllegalArgumentException.class, () -> lending.renew(0, 0, TODAY));
+    }
+
+    @Test
     void cannotReturnTwice(){
         Lending lending = newLending();
         lending.setReturned(0, null, TODAY);

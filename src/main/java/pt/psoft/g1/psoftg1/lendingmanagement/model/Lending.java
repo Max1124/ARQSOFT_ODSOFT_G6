@@ -111,6 +111,11 @@ public class Lending {
     @Getter
     private int fineValuePerDayInCents;
 
+    // Counted so Standard can enforce MaxRenewals; the column default keeps rows created before renewals existed valid.
+    @Getter
+    @Column(nullable = false, columnDefinition = "integer default 0")
+    private int renewals;
+
 
     /**
      * Constructs a new {@code Lending} object to be persisted in the database.
@@ -164,6 +169,32 @@ public class Lending {
 
         // The return date is supplied, not read from the clock, so late returns can be tested at fixed days.
         this.returnedDate = today;
+    }
+
+    /**
+     * Extends the limit date by {@code extensionDays}. The policy decides whether and by how much;
+     * the entity only guards its own invariants (CON-LP-1).
+     *
+     * @throws      StaleObjectStateException if object was already modified by another user.
+     * @throws      IllegalArgumentException  if the lending was returned, is overdue at {@code today}, or the extension is not positive.
+     */
+    public void renew(final long desiredVersion, final int extensionDays, final LocalDate today){
+        // Same guard order as setReturned: state first, then the optimistic-lock version.
+        if (this.returnedDate != null)
+            throw new IllegalArgumentException("A returned lending cannot be renewed");
+
+        if (this.version != desiredVersion)
+            throw new StaleObjectStateException("Object was already modified by another user", this.pk);
+
+        // Overdue is judged at the supplied date so the rule is testable at fixed days; due today is still renewable.
+        if (getDaysDelayed(today) > 0)
+            throw new IllegalArgumentException("An overdue lending cannot be renewed");
+
+        if (extensionDays <= 0)
+            throw new IllegalArgumentException("The extension must be a positive number of days");
+
+        this.limitDate = this.limitDate.plusDays(extensionDays);
+        this.renewals++;
     }
 
     /**

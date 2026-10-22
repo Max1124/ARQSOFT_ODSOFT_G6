@@ -21,6 +21,8 @@ public interface LendingService {
     List<Lending> listByReaderNumberAndIsbn(String readerNumber, String isbn, Optional<Boolean> returned);
     Lending create(CreateLendingRequest resource); //No ID passed, as it is auto generated
     Lending setReturned(String id, SetLendingReturnedRequest resource, long desiredVersion);
+    // Renewal is evaluated by the policy selected for the reader at request time (US14, LP-SEL2).
+    Lending renew(String lendingNumber, long desiredVersion);
     Double getAverageDuration();
     List<Lending> getOverdue(Page page);
     Double getAvgLendingDurationByIsbn(String isbn);
