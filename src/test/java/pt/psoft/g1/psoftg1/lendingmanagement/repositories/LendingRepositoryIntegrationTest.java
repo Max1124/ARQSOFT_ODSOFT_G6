@@ -262,4 +262,83 @@ public class LendingRepositoryIntegrationTest {
         assertThat(overdueLendings).contains(notReturnedLending);
         assertThat(overdueLendings).doesNotContain(notReturnedAndNotOverdueLending);
     }
+
+    @Test
+    public void testGetAvgLendingDurationByIsbn() {
+        // setUp lending lasted 10 days; the second one lasts 20, so the average for the book is 15.
+        lendingRepository.save(Lending.newBootstrappingLending(book,
+                readerDetails,
+                2024,
+                998,
+                LocalDate.of(2024, 2, 1),
+                LocalDate.of(2024, 2, 21),
+                15,
+                300));
+        assertEquals(15.0, lendingRepository.getAvgLendingDurationByIsbn(book.getIsbn()), 0.001);
+    }
+
+    @Test
+    public void testGetAvgLendingDurationByUnknownIsbnIsNull() {
+        assertNull(lendingRepository.getAvgLendingDurationByIsbn("9780000000002"));
+    }
+
+    private Lending saveOutstanding2024() {
+        return lendingRepository.save(Lending.newBootstrappingLending(book,
+                readerDetails,
+                2024,
+                998,
+                LocalDate.of(2024, 5, 31),
+                null,
+                15,
+                300));
+    }
+
+    @Test
+    public void testSearchLendingsFiltersByReturnedFlag() {
+        var outstanding = saveOutstanding2024();
+        String readerNumber = readerDetails.getReaderNumber();
+        Page page = new Page(1, 10);
+
+        assertThat(lendingRepository.searchLendings(page, readerNumber, null, true, null, null))
+                .contains(lending).doesNotContain(outstanding);
+        assertThat(lendingRepository.searchLendings(page, readerNumber, null, false, null, null))
+                .contains(outstanding).doesNotContain(lending);
+        assertThat(lendingRepository.searchLendings(page, readerNumber, null, null, null, null))
+                .contains(lending, outstanding);
+    }
+
+    @Test
+    public void testSearchLendingsFiltersByReaderNumberAndIsbn() {
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), readerDetails.getReaderNumber(), book.getIsbn(), null, null, null))
+                .contains(lending);
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), "2000/999", null, null, null, null))
+                .doesNotContain(lending);
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), null, "9780000000002", null, null, null))
+                .doesNotContain(lending);
+    }
+
+    // Start-date bounds are inclusive on both sides.
+    @Test
+    public void testSearchLendingsFiltersByStartDateRangeInclusively() {
+        var outstanding = saveOutstanding2024();
+        LocalDate start = outstanding.getStartDate();
+
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), null, null, null, start, start))
+                .contains(outstanding).doesNotContain(lending);
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), null, null, null, start.plusDays(1), null))
+                .doesNotContain(outstanding);
+        assertThat(lendingRepository.searchLendings(new Page(1, 10), null, null, null, null, start.minusDays(1)))
+                .doesNotContain(outstanding);
+    }
+
+    @Test
+    public void testSearchLendingsPaginatesInLendingNumberOrder() {
+        var outstanding = saveOutstanding2024();
+
+        List<Lending> first = lendingRepository.searchLendings(new Page(1, 1), readerDetails.getReaderNumber(), null, null, null, null);
+        List<Lending> second = lendingRepository.searchLendings(new Page(2, 1), readerDetails.getReaderNumber(), null, null, null, null);
+
+        assertThat(first).containsExactly(outstanding); // 2024/998 sorts before the current-year lending
+        assertThat(second).containsExactly(lending);
+    }
 }
