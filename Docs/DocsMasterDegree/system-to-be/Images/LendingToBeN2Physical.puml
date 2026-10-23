@@ -1,0 +1,26 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontSize 13
+skinparam ArrowColor black
+skinparam node {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+skinparam artifact {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+title N2 - Physical view (to-be): LMS device
+legend right
+  Yellow: new in the to-be (lending parameters)
+endlegend
+
+node "<<device>>\nLMS" {
+  artifact "<<artifact>>\nJava Rest API" as Api
+  artifact "<<artifact>>\nH2" as H2
+  artifact "<<artifact>>\nconfig/library.properties\n(lending.* parameters)" as Props #FFE08A
+}
+Api --> H2 : JDBC
+Api ..> Props : read and validated at startup
+@enduml

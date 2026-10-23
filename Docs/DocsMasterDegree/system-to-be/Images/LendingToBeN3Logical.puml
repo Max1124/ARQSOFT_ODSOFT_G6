@@ -1,0 +1,69 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontSize 12
+skinparam ArrowColor black
+skinparam component {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+skinparam package {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+title N3 - Logical view (to-be): Lending module
+legend right
+  Blue: element that exists in the as-is N3 logical view
+  Yellow: new or changed by the lending policies work
+endlegend
+
+interface "Java REST API" as RestApi
+
+rectangle "<<component>>\nLending module" as M {
+  rectangle "Frameworks/Drivers Layer" as FD {
+    component "Router" as Router
+    component "H2 DataBase" as DB
+    component "Setup properties\n(library.properties)" as Props #FFE08A
+    component "Setup composition\n(parameter binding, policies,\nrules, Clock)" as Config #FFE08A
+  }
+  rectangle "Adapters" as AD {
+    component "Controller" as Controller
+    component "Mapper" as Mapper
+    component "Repository" as Repo
+  }
+  rectangle "Application" as AP {
+    component "Service" as Service
+    component "DTO" as DTO
+    component "Policy selector\n+ selection rules" as Selector #FFE08A
+    component "Lending policies\n(Standard, Adaptive)" as Policies #FFE08A
+    component "History provider" as History #FFE08A
+    component "Policy parameters" as Params #FFE08A
+  }
+  rectangle "Enterprise Business" as EB {
+    component "Domain/Model" as Model
+  }
+}
+
+RestApi -- Router
+Router --> Controller : Controller API
+Controller --> Mapper : Mapper API
+Controller --> Service : Service API
+Service --> DTO : DTO API
+Service --> Repo : Repository API
+Repo --> DB : DB Driver API
+Service --> Selector : policy for reader
+Selector --> Policies : LendingPolicy API
+Service --> History : history snapshot
+History --> Repo : Repository API
+Policies --> Params : Parameter API
+Config ..> Props : reads at startup
+Config ..> Params : builds, validated
+Config ..> Selector : registers rules
+Config ..> Policies : registers policies
+Service --> Model : Model API
+Repo --> Model : Model API
+@enduml

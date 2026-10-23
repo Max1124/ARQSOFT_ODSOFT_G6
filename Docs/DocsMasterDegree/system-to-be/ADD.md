@@ -256,6 +256,39 @@ The table below shows what we determined to be the priority of features to imple
 |US12|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 |US13|<span style="color:green">Easy</span>|<span style="color:red">High</span>|<span style="color:yellow">2</span>|
 
+## To-be views — Lending policies
+
+The as-is views in `system-as-it-be/N1` to `N4` follow the same zoom levels as the C4 model. The lending policies work is shown at each level in the same notation (blue = already in the as-is view, yellow = new or changed).
+
+| As-is level | C4 level | What it shows | Views in the as-is folder | Lending policies, to-be |
+|---|---|---|---|---|
+| N1 | System context | LMS as one component with its Java REST API and the Ninjas API | logical (VL), implementation (VI), physical (VF) | Unchanged: no new external system or API |
+| N2 | Containers | LMS split into Backend and the H2 database | VL, VI, VF | Logical and implementation views unchanged. Physical view: one new artifact, `config/library.properties`, read at startup (below) |
+| N3 | Components | One module in four layers: Frameworks/Drivers, Adapters, Application, Enterprise Business | logical (VL3), implementation (VI) | Both views below |
+| N4 | Code | Packages and classes of a generic module | `VIL4_Generic` | Implementation view of the Lending module below; classes and their relations are in [Structure](Images/LendingPolicyStructure.png) and the [class diagram](Images/LendingClassDiagram.png) |
+
+The mapping to C4 is by zoom level, not by deployment: the backend is a single deployable, so N2 has only one runtime container besides the database.
+
+### N2 — Physical view (to-be)
+
+![N2 physical view, to-be](Images/LendingToBeN2Physical.png)
+
+### N3 — Logical view (to-be)
+
+![N3 logical view, to-be](Images/LendingToBeN3Logical.png)
+
+The Application layer gains the policy selector with its rules, the lending policies, the history provider and the policy parameters; `Service` delegates the lending rules to them (EXT-LP-01 to EXT-LP-05). The setup composition in the Frameworks/Drivers layer reads the lending properties, builds the validated parameters and registers the policies and rules (CFG-LP-03, CFG-LP-05).
+
+### N3 — Implementation view (to-be)
+
+![N3 implementation view, to-be](Images/LendingToBeN3Implementation.png)
+
+### N4 — Implementation view (to-be)
+
+![N4 implementation view, to-be](Images/LendingToBeN4Implementation.png)
+
+New package `lendingmanagement.services.policy`, new `configuration` classes, and the changed classes `LendingServiceImpl`, `LendingRepository` (history window query) and `Lending` (renewal counter and reference date).
+
 ## Traceability — Lending policies
 
 Each requirement is followed through the design decision (IDs in [Extensibility.md](Extensibility.md), [Configurability.md](Configurability.md) and [Testability.md](Testability.md)), the view that shows it, the production code and the tests. Package `lendingmanagement.services.policy` is written `policy`; test classes are under `src/test/java`. Status on 2026-10-23: all rows implemented and tested; `./mvnw test` 366 tests, 0 failures.

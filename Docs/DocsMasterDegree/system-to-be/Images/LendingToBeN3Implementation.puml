@@ -1,0 +1,48 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontSize 12
+skinparam ArrowColor black
+skinparam package {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+title N3 - Implementation view (to-be): Lending module
+legend right
+  Blue: as-is layer
+  Yellow: new or changed by the lending policies work
+endlegend
+
+package "Lending module" {
+  package "Frameworks/Drivers Layer" as FD {
+    rectangle "infrastructure.repositories.impl\n(SpringDataLendingRepository)" as Infra
+    rectangle "configuration\n(ClockConfig, LendingParametersConfig,\nLendingPoliciesConfig)" as Conf #FFE08A
+    rectangle "resources: config/library.properties\n(lending.* keys)" as Res #FFE08A
+  }
+  package "Adapters" as AD {
+    rectangle "lendingmanagement.api\n(LendingController, LendingViewMapper, views)" as Api
+    rectangle "lendingmanagement.repositories\n(LendingRepository, FineRepository)" as Repos
+  }
+  package "Application" as AP {
+    rectangle "lendingmanagement.services\n(LendingService, LendingServiceImpl, requests, queries)" as Services
+    rectangle "lendingmanagement.services.policy\n(LendingPolicy, Standard/Adaptive, selector, rules,\nhistory provider, parameters, PolicyDecision)" as Policy #FFE08A
+  }
+  package "Enterprise Business" as EB {
+    rectangle "lendingmanagement.model\n(Lending, Fine, LendingNumber)" as Model
+  }
+}
+
+Api ..> Services
+Services ..> Repos
+Services ..> Policy
+Policy ..> Repos : history provider
+Infra ..> Repos : implements
+Repos ..> Model
+Services ..> Model
+Conf ..> Policy : creates and registers
+Conf ..> Res : reads
+@enduml

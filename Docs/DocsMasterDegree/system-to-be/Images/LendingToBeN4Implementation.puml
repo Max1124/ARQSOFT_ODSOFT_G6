@@ -1,0 +1,71 @@
+@startuml
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam defaultFontSize 11
+skinparam ArrowColor black
+skinparam package {
+  BackgroundColor #7DD0F5
+  BorderColor black
+}
+skinparam rectangle {
+  BackgroundColor #9BE0F8
+  BorderColor black
+}
+title N4 - Implementation view (to-be): Lending module
+legend right
+  Same structure as the as-is N4 generic module.
+  Yellow: new or changed by the lending policies work
+endlegend
+
+package "Lending module" {
+  package "api" as api {
+    rectangle LendingController as C
+    rectangle LendingViewMapper as VM
+    rectangle "LendingView,\nLendingLinksView,\nFineView" as V
+  }
+  package "services" as svc {
+    rectangle LendingService as S
+    rectangle LendingServiceImpl as SI #FFE08A
+    rectangle "CreateLendingRequest,\nSetLendingReturnedRequest" as R
+    rectangle SearchLendingQuery as Q
+  }
+  package "services.policy" as pol #FFE08A {
+    rectangle "LendingPolicy\nStandardLendingPolicy\nAdaptiveLendingPolicy" as LP
+    rectangle "LendingPolicySelector\nPolicySelectionRule\nAdaptiveEligibilityRule" as SEL
+    rectangle "ReaderLendingHistory\nReaderLendingHistoryProvider" as HIST
+    rectangle "PolicyDecision, RejectionReason,\nLendingToRenew" as DEC
+    rectangle "Standard/Adaptive/Selection\nPolicyParameters" as PAR
+  }
+  package "repositories" as rep {
+    rectangle "LendingRepository\nFineRepository" as REP #FFE08A
+  }
+  package "infrastructure.repositories.impl" as inf {
+    rectangle SpringDataLendingRepository as SDR
+  }
+  package "model" as mod {
+    rectangle "Lending, Fine,\nLendingNumber" as M #FFE08A
+  }
+}
+package "configuration" as cfg #FFE08A {
+  rectangle "ClockConfig\nLendingParametersConfig\nLendingPoliciesConfig" as CF
+}
+
+C ..> VM
+VM ..> V
+C ..> S
+S <|.. SI
+SI ..> R
+SI ..> Q
+SI ..> REP
+SI ..> SEL
+SI ..> HIST
+SI ..> DEC
+SEL ..> LP
+LP ..> PAR
+LP ..> DEC
+HIST ..> REP
+SDR ..> REP
+REP ..> M
+CF ..> PAR
+CF ..> SEL
+@enduml
