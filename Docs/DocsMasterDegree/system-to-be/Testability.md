@@ -14,13 +14,13 @@ For lending policies, QAS11 requires each policy rule, the parameter constraints
 
 ### Current limitations
 
-- `BookServiceImpl.create` resolves authors/genre, constructs a real `Book` and saves it through the repository. No `BookServiceImplTest` was found in the current test tree. Future tests must explicitly define which collaborators are real and which are replaced before claiming a single-class SUT.
+- `BookServiceImpl.create` resolves authors/genre, constructs a real `Book` and saves it through the repository. No `BookServiceImplTest` was found in the current test tree when this was written; an as-is `BookServiceImplTest` with doubles was added on 2026-10-23. Future tests must explicitly define which collaborators are real and which are replaced before claiming a single-class SUT.
 - The bibliographic contract, coordinator, adapters and merge are design proposals, not implemented classes in the current source tree.
 - `Author` constructs `Name` and `Bio` internally. Under the classroom single-class SUT convention, tests exercising this construction include real collaborators. This observation motivates explicit dependencies, but the proposed bibliographic design does not require changing the `Author` constructor.
 - `AuthorViewMapper` is used by the controller to build API views and HTTP links. This placement matches its responsibility and is not itself a testability defect. No relocation of existing REST mappers is required by this bibliographic iteration; provider response mapping is handled separately beside the external adapters.
 - Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule and the reader preference storage are design proposals, not implemented classes. Real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. How a due-date or overdue event is detected and triggered, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values.
 - Some existing tests start Spring and replace repositories with mocks. An annotation or test name does not determine the SUT. Their actual real collaborators and assertions must be inspected.
-- Lending: the current structure, not the lack of test cases, is what prevents testing the lending rules in isolation (analysed per element in Step 3, Iteration 3). "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the numeric limit (3) and the overdue rule sit inside `LendingServiceImpl.create`, interleaved with repository access; configuration enters through `@Value` fields. The only service-level and repository-level lending tests (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`) are `@SpringBootTest` tests with real repositories, so the lending package has integration tests but no class-level test of the service or of any rule. The policy contract, selector, history snapshot and parameter objects are design proposals, not implemented classes.
+- Lending: the current structure, not the lack of test cases, is what prevents testing the lending rules in isolation (analysed per element in Step 3, Iteration 3). "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the numeric limit (3) and the overdue rule sit inside `LendingServiceImpl.create`, interleaved with repository access; configuration enters through `@Value` fields. The only service-level and repository-level lending tests (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`) are `@SpringBootTest` tests with real repositories, so the lending package has integration tests but no class-level test of the service or of any rule. The policy contract, selector, history snapshot and parameter objects were design proposals when this analysis was written and have since been implemented (see Analysis — Iteration 3).
 
 ### SUT convention for this project
 
@@ -178,7 +178,7 @@ Sub-decision, time source:
 
 ### Selected alternative — C
 
-C is the proposed design. A single injected `Clock` makes "today" a controllable input, immutable parameter objects make configuration an explicit input, the snapshot passes facts and the reference date to policies and rules so they stay free of time and framework dependencies (CON-LP-4), and the structured decision makes the outcome observable. A is rejected because it cannot reach class-level isolation; B is rejected because it leaves the rules unreachable except through the whole service and does not reduce the cost of adding a policy.
+C is the selected design and is implemented. A single injected `Clock` makes "today" a controllable input, immutable parameter objects make configuration an explicit input, the snapshot passes facts and the reference date to policies and rules so they stay free of time and framework dependencies (CON-LP-4), and the structured decision makes the outcome observable. A is rejected because it cannot reach class-level isolation; B is rejected because it leaves the rules unreachable except through the whole service and does not reduce the cost of adding a policy.
 
 Test order is part of the decision. Following the unit-versus-integration distinction in the software testing material (*Something about Software Testing v6*, "Unit vs integration tests"), class-level tests of every element are written and passing before a test that combines those elements is written. An integration test written first cannot say whether a failure comes from a rule, from wiring or from persistence, and the current lending package shows that state (integration tests only). The dependency order of the design gives the testing order: parameter objects, then policies and rules, then selector, then history provider (repository double), then service (collaborator doubles), then collaboration, then system.
 
@@ -378,7 +378,7 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 - Existing JUnit/Mockito facilities are candidates for class tests; Spring test support for real collaboration. Select a local HTTP double when provider-client boundaries are finalized.
 - Surefire executes the configured test selection; Failsafe can separate integration execution if explicitly configured. A test filename alone is not SUT evidence.
 - JaCoCo measures exercised code. The reported final target is at least 85%; line coverage is the current assumption and measurement scope still needs confirmation. QAS9's 80% branch target is a separate group proposal.
-- PIT mutation testing requires later configuration. Surviving mutants are not failing functional tests; mutation score and any exclusions require explicit justified criteria.
+- PIT mutation testing (pitest-maven 1.15.8) is configured in `pom.xml` and run on demand, not in the default build, on the lending policy package, `lendingmanagement.model` and `bookmanagement.model`. Surviving mutants are not failing functional tests; no score threshold is required (the professor does not ask for 100%).
 - Tests of error paths must pass when expected rejection occurs. No rule accepting integration failures is set here: any faculty-required tolerance needs a separately agreed criterion.
 
 ### Technical Memo
@@ -418,7 +418,7 @@ No sketch has been drawn yet. Class tests place one channel, the dispatch or the
 
 **Pending decisions (notifications):** form of the delivery boundary per channel; where dispatch lives; how due-date and overdue events are triggered; webhook target; channel failure behaviour and behaviour with no enabled channel; fixture format for readers and preferences; whether context tests run under Surefire or Failsafe.
 
-**Pending decisions:** fixture format for seeded histories; whether context-startup tests run under Surefire or Failsafe; mutation-score threshold and exclusions.
+**Pending decisions:** whether context-startup tests run under Surefire or Failsafe (lending context tests currently run under Surefire).
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
@@ -430,7 +430,7 @@ The columns are independent status lists: cells on the same row are not related.
 |---|---|---|
 | | Bibliographic isolation — QAS9: constructor injection, separated mapping/merge and transport contract proposed; source outcomes agreed in the memo; exact signatures, field merge rules and REST representation remain pending |  |
 | | Notification testability — QAS10: recording doubles, delivery boundary, SUT boundaries, test categories and AAA cases proposed; dispatch location, event trigger, failure behaviour and boundary sketches still pending | |
-| | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service), bottom-up test order and SUT boundaries decided; nothing implemented; fixture formats still pending | |
+| | | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service) implemented; class, domain, mutation, collaboration and system tests written and passing (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
 
@@ -439,10 +439,23 @@ The columns are independent status lists: cells on the same row are not related.
 - **Verification:** construct the service and adapters with controlled collaborators; test mappers and merge with fixed data, then combine real implementations with a local provider double. Record the real production classes in each SUT.
 - **Pending:** exact transport/data contracts, field merge rules, REST representation and affected registration-domain scope. No implementation or passing tests are claimed.
 
+### Analysis — Iteration 3
+
+- **Goal:** achieved for lending. The architectural changes (injected `Clock`, parameter objects, extracted policies, history port, thin service) are implemented, and the bottom-up order was followed: class tests before collaboration and system tests.
+- **Evidence (2026-10-23, `./mvnw test`: 366 tests, 0 failures):**
+    - Opaque-box, classes: `StandardLendingPolicyTest`, `AdaptiveLendingPolicyTest`, `AdaptiveEligibilityRuleTest`, `LendingPolicySelectorTest`, `ReaderLendingHistoryProviderTest`, the three `*ParametersTest` and `LendingServiceImplPolicyTest` (mocked selector and policy), all without Spring or a database.
+    - Transparent-box, domain: `LendingTest`, `FineTest`, `LendingNumberTest` with fixed dates, and the parameter objects.
+    - Mutation: PIT on the policy package, `lendingmanagement.model` and `bookmanagement.model`: 191 mutations, 182 killed (95%), test strength 97%. No mutant survives in any policy, rule, selector, provider or parameter class; the survivors are Lombok-generated `Isbn.equals/hashCode` and `Book.getVersion`.
+    - Collaboration: `LendingApiComponentTest` (17) and `BookApiComponentTest` (14): real controller, service, policies, repositories and database; authentication simulated. Includes policy re-evaluation per request (a place frees after a return) and rejection reasons in the 403 response.
+    - System: `LendingSystemTest` (9): HTTP only, real login and JWT, reader registration, lending, renewal, return, Standard and Adaptive journeys, 401 and 403 cases.
+- **Trade-off:** collaboration and system tests share one Spring context and an in-memory database, rolled back per test; they are slower than class tests and the system tests run through `MockMvc`, not a network port.
+- **Not covered:** a changed parameter after a whole-application restart is checked at configuration level (`LendingParametersConfigTest`, `LendingPoliciesConfigTest`), not by restarting the application; the planned fixed-clock bean for collaboration tests was not needed because dates were seeded relative to today.
+- **Findings in existing code (not fixed):** `BookServiceImpl.create` reads `photoURI` before clearing it; `BookController.create` builds `Location` as `/api/books/{isbn}/{isbn}`; `Book.getDescription()` throws on a null description, so registering a book without one returns 500.
+
 ## Step 8 — Refine as necessary
 
 Resolve the pending contracts with concrete examples; update the memo and boundary sketches; implement a small class-level case and then its collaboration test. Refine existing tests only where relevant, without mass-refactoring every module. Continue with the notification and lending iterations after reviewing their drivers.
 
 For notifications: decide the delivery boundary, the dispatch location and the failure behaviour first; then write the recording-double class tests for dispatch and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests. Draw the notification boundary sketches and add the testability memo.
 
-For lending: apply the architectural changes in dependency order and write the class-level tests of each element before the next element, and before any collaboration test that includes it: clock, parameter objects, policies and rules, selector, history provider, then the thin `LendingServiceImpl`. Keep the existing lending integration tests passing as a regression check while the service is refactored, add the missing class-level service test first, and state in each test the open behaviour it relies on. Section 1.3.3.4 is then implementation only, from the SUT boundaries and cases above.
+For lending: done in dependency order (clock, parameter objects, policies and rules, selector, history provider, thin `LendingServiceImpl`), each with class-level tests before the collaboration and system tests; the existing lending integration tests stayed green throughout. Section 1.3.3.4 for lending is implemented (see Analysis — Iteration 3).

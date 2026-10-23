@@ -143,7 +143,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | L3 — Separate selection rules and selector | Ordered rules map reader history to a policy; Standard is the default. | Selection tested alone; visible as its own element; supports QAS8, QAS11 | More types; rule order must be explicit |
 | L4 — Selection stored or edited as external data | Selection thresholds and policy mapping kept as configuration or database data. | Changes without redeploy | Thresholds are already setup-time configuration (QAS7); editing the policy mapping at runtime is not required; over-engineering for two policies; harder to test |
 
-**Proposed choice:** L3, the same selector design recorded in [the lending policies memo](Technical%20Memos/Extensibility/LendingPolicies.md) (EXT-LP-03). Configurability adds no new element to it; it records that selection is performed per request and that its thresholds are setup-time configuration (CFG-LP-03).
+**Chosen and implemented:** L3, the same selector design recorded in [the lending policies memo](Technical%20Memos/Extensibility/LendingPolicies.md) (EXT-LP-03). Configurability adds no new element to it; it records that selection is performed per request and that its thresholds are setup-time configuration (CFG-LP-03).
 
 ## Step 5 — Instantiate architectural elements, allocate responsibilities, and define interfaces
 
@@ -190,7 +190,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | `LendingServiceImpl` | Ask the selector for the policy and delegate the decision; no policy names or limits. | Existing service (changed once, see Extensibility) | QAS3, QAS8 |
 | Lending parameter binding | Read the lending setup properties, build the validated parameter objects and fail startup on invalid values. | Spring configuration; setup-time binding | QAS7, CFG-LP-03, CFG-LP-05 |
 
-Names are proposed, not existing classes.
+Names of the lending elements exist in `lendingmanagement.services.policy` and `configuration` (`LendingParametersConfig`, `LendingPoliciesConfig`); the bibliographic and notification names are proposed, not existing classes.
 
 ### Connection of elements — Interface contracts
 
@@ -248,8 +248,8 @@ At startup the binding reads the lending properties and builds the three paramet
 
 **Pending decisions:**
 
-- Property names, file location and environment-variable precedence (including the lending parameter keys).
-- Reuse or replacement of the existing `lendingDurationInDays` key; unit of `MinOnTimeRatio` in configuration.
+- Property names, file location and environment-variable precedence for the bibliographic and notification keys. Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
+- Lending: the old `lendingDurationInDays` key was replaced by `lending.standard.lending-period-days`, and `MinOnTimeRatio` is a percentage (`lending.selection.min-on-time-ratio-percent`).
 - Review the proposed rejection of an empty bibliographic source list; behaviour when no notification channel is enabled remains open.
 - Source of the webhook target.
 
@@ -257,13 +257,13 @@ At startup the binding reads the lending properties and builds the three paramet
 
 ### Design Kanban
 
-This board evaluates the configurability drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution. No driver is marked addressed; implementation and verification are also pending.
+This board evaluates the configurability drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution. Only the lending drivers (QAS7, QAS8) are marked addressed, because they are also implemented and tested; the others have no implementation or verification yet.
 
 | Not addressed                                                                                                                                                                             | Partially addressed | Addressed in the design |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
 |                                                                                                                                                                                           | Bibliographic source selection — QAS4: external property, validation, ordered composition and diagrams specified; configuration loading/precedence and executable examples remain pending | |
 |                                                                                                                                                                                           | Notification channel selection and reader preferences — QAS5, QAS6: enabled set and validation proposed; property format, failure behaviour and preference storage still need refinement  | |
-|                                                                                                                                                                                           | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup and per-request selector proposed; property names still pending | |
+|                                                                                                                                                                                           | | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup from `lending.*` keys, and a per-request selector, implemented and tested |
 
 Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) is detailed in [Testability.md](Testability.md).
 
@@ -276,7 +276,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
 
 ### Analysis and next verification — Iterations 2 and 3
 
-- **Iteration goals:** structurally supported by channel composition (iteration 2) and parameter binding/per-request selection (iteration 3); none is verified.
+- **Iteration goals:** iteration 2 (channel composition) is structurally supported and not verified. Iteration 3 (parameter binding and per-request selection) is implemented and verified, see the lending verification below.
 - **Trade-off:** a composition element and fail-fast startup for setup choices; selection adds rule types and an explicit rule order. Changes to the enabled sources or channels need a restart, which matches the scenarios.
 - **Experiments:**
     - Enable each combination of channels (single, several) and confirm the effect after one restart with no code change.
@@ -285,6 +285,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
     - Change a reader's channels to include a disabled one and confirm rejection naming the channel.
     - Request a lending and a renewal for readers with different histories and confirm each is evaluated with the policy its history selects.
 - **Representative tests:** disabled channels send 0 notifications; other readers' preferences are unaffected; each LP-SEL1 condition and its boundaries; a reader changes policy between two requests without restart. Use Arrange → Act → Assert, with a fixed clock for selection.
+- **Lending verification (2026-10-23):** `LendingParametersConfigTest` binds the `lending.*` keys and shows that a missing, malformed or constraint-violating value stops startup naming the parameter (QAS7). `LendingPoliciesConfigTest` builds the composed selector from properties and shows that changing a selection value changes who qualifies with no code change. `AdaptiveEligibilityRuleTest` covers each LP-SEL1 condition and its boundaries. `LendingApiComponentTest` and `LendingSystemTest` show end to end that a reader with enough on-time returns gets the Adaptive period, one below the ratio or count stays on Standard, and the policy is evaluated again on every request (a place frees after a return). A restart with a changed value is covered at configuration level only; no whole-application restart experiment was run.
 
 ## Step 8 — Refine as necessary
 
