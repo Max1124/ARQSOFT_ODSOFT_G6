@@ -196,7 +196,74 @@
 					<threads>4</threads>
 				</configuration>
 			</plugin>
+
+			<!-- Static analysis, run on demand and never fails the build: ./mvnw compile spotbugs:spotbugs -->
+			<plugin>
+				<groupId>com.github.spotbugs</groupId>
+				<artifactId>spotbugs-maven-plugin</artifactId>
+				<version>4.8.6.2</version>
+				<configuration>
+					<effort>Default</effort>
+					<threshold>Medium</threshold>
+					<failOnError>false</failOnError>
+					<xmlOutput>true</xmlOutput>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
+
+	<profiles>
+		<!--
+			Scope of the lending policies work for the CI pipeline: ./mvnw -Plending verify
+			Each owner can add a profile like this one with the tests and packages of their own capability.
+		-->
+		<profile>
+			<id>lending</id>
+			<properties>
+				<test>pt/psoft/g1/psoftg1/lendingmanagement/**/*Test,pt/psoft/g1/psoftg1/configuration/Lending*Test,pt/psoft/g1/psoftg1/system/LendingSystemTest</test>
+				<surefire.failIfNoSpecifiedTests>false</surefire.failIfNoSpecifiedTests>
+			</properties>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>report</id>
+								<configuration>
+									<includes>
+										<include>pt/psoft/g1/psoftg1/lendingmanagement/**</include>
+										<include>pt/psoft/g1/psoftg1/configuration/Lending*</include>
+									</includes>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<configuration>
+							<targetClasses combine.self="override">
+								<param>pt.psoft.g1.psoftg1.lendingmanagement.services.policy.*</param>
+								<param>pt.psoft.g1.psoftg1.lendingmanagement.model.*</param>
+							</targetClasses>
+							<targetTests combine.self="override">
+								<param>pt.psoft.g1.psoftg1.lendingmanagement.services.policy.*</param>
+								<param>pt.psoft.g1.psoftg1.lendingmanagement.model.*</param>
+							</targetTests>
+						</configuration>
+					</plugin>
+					<plugin>
+						<groupId>com.github.spotbugs</groupId>
+						<artifactId>spotbugs-maven-plugin</artifactId>
+						<configuration>
+							<onlyAnalyze>pt.psoft.g1.psoftg1.lendingmanagement.-</onlyAnalyze>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 
 </project>
