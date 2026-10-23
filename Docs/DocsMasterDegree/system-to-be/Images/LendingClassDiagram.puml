@@ -1,0 +1,73 @@
+@startuml
+!pragma layout smetana
+skinparam shadowing false
+skinparam backgroundColor white
+skinparam classAttributeIconSize 0
+hide circle
+title Lending module - layers, domain and policy boundary
+
+package "api" {
+  class LendingController {
+    + create(request)
+    + setLendingReturned(year, seq, version)
+    + renewLending(year, seq, version)
+  }
+}
+
+package "services" {
+  interface LendingService {
+    + create(request): Lending
+    + setReturned(number, request, version): Lending
+    + renew(number, version): Lending
+  }
+  class LendingServiceImpl
+  class "LendingPolicySelector\nLendingPolicy\nReaderLendingHistoryProvider" as PolicyPackage <<services.policy>>
+}
+
+package "repositories" {
+  interface LendingRepository {
+    + listOutstandingByReaderNumber(readerNumber)
+    + listReturnedByReaderNumberBetween(readerNumber, from, to)
+    + save(lending)
+  }
+  interface FineRepository
+}
+
+package "model" {
+  class Lending {
+    - lendingNumber: LendingNumber
+    - startDate
+    - limitDate
+    - returnedDate
+    - renewals
+    - fineValuePerDayInCents
+    - version
+    + setReturned(version, commentary, today)
+    + renew(version, extensionDays, today)
+    + getDaysDelayed(today)
+  }
+  class LendingNumber <<value object>>
+  class Fine {
+    - fineValuePerDayInCents
+    - centsValue
+  }
+}
+
+package "other aggregates" {
+  class Book
+  class ReaderDetails
+}
+
+LendingController --> LendingService
+LendingServiceImpl ..|> LendingService
+LendingServiceImpl --> LendingRepository
+LendingServiceImpl --> FineRepository
+LendingServiceImpl --> PolicyPackage : delegates rules
+LendingServiceImpl ..> Lending : creates, renews, returns
+PolicyPackage ..> LendingRepository : history
+
+Lending *-- "1" LendingNumber
+Lending "0..*" --> "1" Book
+Lending "0..*" --> "1" ReaderDetails
+Lending "1" -- "0..1" Fine
+@enduml

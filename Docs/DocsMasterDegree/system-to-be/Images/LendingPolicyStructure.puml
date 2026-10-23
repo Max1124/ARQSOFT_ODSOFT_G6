@@ -2,41 +2,107 @@
 !pragma layout smetana
 skinparam shadowing false
 skinparam backgroundColor white
-title Lending policy extension point
-class LendingServiceImpl
-class LendingPolicySelector {
-  select(history)
+skinparam classAttributeIconSize 0
+hide circle
+title Lending policy extension point - class diagram (package lendingmanagement.services.policy)
+
+class LendingServiceImpl {
+  + create(request): Lending
+  + renew(lendingNumber, version): Lending
 }
-interface PolicySelectionRule {
-  appliesTo(history)
-  policy()
-}
-class AdaptiveEligibilityRule
-interface LendingPolicy {
-  evaluateNewLending(history)
-  evaluateRenewal(lending, history)
+
+interface LendingPolicy <<Strategy>> {
+  + evaluateNewLending(history): PolicyDecision
+  + evaluateRenewal(lending, history): PolicyDecision
 }
 class StandardLendingPolicy
 class AdaptiveLendingPolicy
-class StandardPolicyParameters
-class AdaptivePolicyParameters
-class PolicyDecision
-class ReaderLendingHistory
-class ReaderLendingHistoryProvider
-interface LendingRepository
-class Clock
-LendingServiceImpl --> ReaderLendingHistoryProvider : builds history
-LendingServiceImpl --> LendingPolicySelector : asks for policy
-LendingServiceImpl --> LendingPolicy : applies decision
-LendingPolicySelector --> PolicySelectionRule : ordered rules
+
+class LendingPolicySelector {
+  - rules: List<PolicySelectionRule>
+  - defaultPolicy: LendingPolicy
+  + select(history): LendingPolicy
+}
+interface PolicySelectionRule {
+  + select(history): Optional<LendingPolicy>
+}
+class AdaptiveEligibilityRule {
+  - adaptivePolicy: LendingPolicy
+}
+
+class ReaderLendingHistoryProvider {
+  + historyOf(readerNumber): ReaderLendingHistory
+}
+interface LendingRepository <<port>>
+class "java.time.Clock" as Clock
+
+class ReaderLendingHistory <<record>> {
+  referenceDate
+  activeLendings
+  overdueLendings
+  completedInWindow
+  onTimeInWindow
+}
+class LendingToRenew <<record>> {
+  overdue
+  renewalsMade
+}
+class PolicyDecision <<record>> {
+  allowed
+  periodDays
+  reason
+  + allow(periodDays)
+  + reject(reason)
+}
+enum RejectionReason {
+  OVERDUE_LENDING
+  MAX_ACTIVE_LENDINGS
+  LENDING_OVERDUE
+  MAX_RENEWALS
+}
+
+class StandardPolicyParameters <<record>> {
+  maxActiveLendings
+  lendingPeriodDays
+  maxRenewals
+  renewalPeriodDays
+}
+class AdaptivePolicyParameters <<record>> {
+  maxActiveLendings
+  firstThreshold
+  secondThreshold
+  longPeriodDays
+  standardPeriodDays
+  shortPeriodDays
+}
+class PolicySelectionParameters <<record>> {
+  historyPeriodMonths
+  minCompletedLendings
+  minOnTimeRatioPercent
+}
+
+LendingServiceImpl --> ReaderLendingHistoryProvider
+LendingServiceImpl --> LendingPolicySelector
+LendingServiceImpl ..> LendingPolicy : applies
+LendingServiceImpl ..> LendingToRenew : builds
+
+LendingPolicySelector o-- "0..*" PolicySelectionRule : ordered
 LendingPolicySelector --> LendingPolicy : default Standard
 AdaptiveEligibilityRule ..|> PolicySelectionRule
+AdaptiveEligibilityRule --> LendingPolicy : Adaptive
+AdaptiveEligibilityRule --> PolicySelectionParameters
 StandardLendingPolicy ..|> LendingPolicy
 AdaptiveLendingPolicy ..|> LendingPolicy
 StandardLendingPolicy --> StandardPolicyParameters
 AdaptiveLendingPolicy --> AdaptivePolicyParameters
-LendingPolicy --> PolicyDecision : returns
+
+LendingPolicy ..> ReaderLendingHistory : reads
+LendingPolicy ..> LendingToRenew : reads
+LendingPolicy ..> PolicyDecision : returns
+PolicyDecision --> "0..1" RejectionReason
+
 ReaderLendingHistoryProvider --> LendingRepository
 ReaderLendingHistoryProvider --> Clock
-ReaderLendingHistoryProvider --> ReaderLendingHistory : creates
+ReaderLendingHistoryProvider --> PolicySelectionParameters
+ReaderLendingHistoryProvider ..> ReaderLendingHistory : creates
 @enduml

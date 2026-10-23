@@ -279,6 +279,12 @@ On every new lending or renewal, `LendingServiceImpl` builds the reader's histor
 
 A new policy implements `LendingPolicy` with its own parameters; when it needs its own eligibility condition, a new `PolicySelectionRule` is added and both are registered at setup (EXT-LP-01 to EXT-LP-03).
 
+### Class diagram — Lending module
+
+![Lending module class diagram](Images/LendingClassDiagram.png)
+
+Shows where the policy package sits between `LendingController`, `LendingServiceImpl`, the repository port and the `Lending` aggregate; the service reaches rules only through the policy package.
+
 **Pending decisions:** renewal data on `Lending`; rule order when several rules match; REST format of rejection reasons.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
