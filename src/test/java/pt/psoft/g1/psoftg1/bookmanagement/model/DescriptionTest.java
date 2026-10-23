@@ -49,4 +49,11 @@ class DescriptionTest {
         assertEquals("Some other description", description.toString());
     }
 
+    @Test
+    void ensureDescriptionOfExactlyTheMaximumLengthIsAccepted() {
+        final var maxLength = "a".repeat(4096);
+        assertEquals(maxLength, new Description(maxLength).toString());
+        assertThrows(IllegalArgumentException.class, () -> new Description(maxLength + "a"));
+    }
+
 }

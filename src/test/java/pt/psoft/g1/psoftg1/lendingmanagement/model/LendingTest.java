@@ -2,6 +2,7 @@ package pt.psoft.g1.psoftg1.lendingmanagement.model;
 
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 import pt.psoft.g1.psoftg1.authormanagement.model.Author;
 import pt.psoft.g1.psoftg1.bookmanagement.model.Book;
 import pt.psoft.g1.psoftg1.genremanagement.model.Genre;
@@ -71,6 +72,21 @@ class LendingTest {
         Lending lending = newLending();
         lending.setReturned(0, null, TODAY);
         assertEquals(TODAY, lending.getReturnedDate());
+    }
+
+    // The entity exposes no getter for the commentary, so it is read from the field.
+    @Test
+    void testSetReturnedKeepsTheCommentary(){
+        Lending lending = newLending();
+        lending.setReturned(0, "Gostei muito", TODAY);
+        assertEquals("Gostei muito", ReflectionTestUtils.getField(lending, "commentary"));
+    }
+
+    @Test
+    void testSetReturnedWithoutCommentaryLeavesItEmpty(){
+        Lending lending = newLending();
+        lending.setReturned(0, null, TODAY);
+        assertNull(ReflectionTestUtils.getField(lending, "commentary"));
     }
 
     @Test

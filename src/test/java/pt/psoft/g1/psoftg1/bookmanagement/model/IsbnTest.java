@@ -59,7 +59,32 @@ class IsbnTest {
     }
 
     @Test
+    void ensureIsbn10MayEndInX() {
+        assertEquals("080442957X", new Isbn("080442957X").toString());
+    }
+
+    @Test
+    void ensureIsbn10HasOnlyDigitsAndAFinalX() {
+        assertThrows(IllegalArgumentException.class, () -> new Isbn("81752X7660"));
+    }
+
+    @Test
+    void ensureIsbn13HasOnlyDigits() {
+        assertThrows(IllegalArgumentException.class, () -> new Isbn("978282601209X"));
+    }
+
+    @Test
+    void ensureEqualityDependsOnTheValue() {
+        assertEquals(new Isbn("9782826012092"), new Isbn("9782826012092"));
+        assertEquals(new Isbn("9782826012092").hashCode(), new Isbn("9782826012092").hashCode());
+        assertNotEquals(new Isbn("9782826012092"), new Isbn("9789722025065"));
+        assertNotEquals(new Isbn("9782826012092"), "9782826012092");
+    }
+
+    @Test
     void ensureChecksum10IsCorrect() {
         assertThrows(IllegalArgumentException.class, () -> new Isbn("8175257667"));
+        assertThrows(IllegalArgumentException.class, () -> new Isbn("8175257661"));
+        assertThrows(IllegalArgumentException.class, () -> new Isbn("0804429571"));
     }
 }

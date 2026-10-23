@@ -163,6 +163,39 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<!-- Mutation testing (1.3.3.4.3); run on demand: ./mvnw test-compile org.pitest:pitest-maven:mutationCoverage -->
+			<plugin>
+				<groupId>org.pitest</groupId>
+				<artifactId>pitest-maven</artifactId>
+				<version>1.15.8</version>
+				<dependencies>
+					<dependency>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-junit5-plugin</artifactId>
+						<version>1.2.1</version>
+					</dependency>
+				</dependencies>
+				<configuration>
+					<!-- Only pure classes with fast class-level tests: policies, selection, parameters and domain entities. -->
+					<targetClasses>
+						<param>pt.psoft.g1.psoftg1.lendingmanagement.services.policy.*</param>
+						<param>pt.psoft.g1.psoftg1.lendingmanagement.model.*</param>
+						<param>pt.psoft.g1.psoftg1.bookmanagement.model.*</param>
+					</targetClasses>
+					<targetTests>
+						<param>pt.psoft.g1.psoftg1.lendingmanagement.services.policy.*</param>
+						<param>pt.psoft.g1.psoftg1.lendingmanagement.model.*</param>
+						<param>pt.psoft.g1.psoftg1.bookmanagement.model.*</param>
+					</targetTests>
+					<outputFormats>
+						<param>HTML</param>
+						<param>XML</param>
+					</outputFormats>
+					<timestampedReports>false</timestampedReports>
+					<threads>4</threads>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
 

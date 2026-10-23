@@ -78,14 +78,15 @@ class ReaderLendingHistoryProviderTest {
     @Test
     void countsCompletedAndOnTimeLendingsInTheWindow() {
         Lending onTime = lending(1, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 16));   // returned on the limit date
+        Lending early = lending(3, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 5));     // returned before the limit date
         Lending late = lending(2, LocalDate.of(2026, 1, 1), LocalDate.of(2026, 1, 17));     // one day late
         when(repository.listOutstandingByReaderNumber(READER)).thenReturn(List.of());
-        when(repository.listReturnedByReaderNumberBetween(READER, TODAY.minusMonths(6), TODAY)).thenReturn(List.of(onTime, late));
+        when(repository.listReturnedByReaderNumberBetween(READER, TODAY.minusMonths(6), TODAY)).thenReturn(List.of(onTime, early, late));
 
         ReaderLendingHistory history = provider.historyOf(READER);
 
-        assertThat(history.completedInWindow()).isEqualTo(2);
-        assertThat(history.onTimeInWindow()).isEqualTo(1);
+        assertThat(history.completedInWindow()).isEqualTo(3);
+        assertThat(history.onTimeInWindow()).isEqualTo(2);
     }
 
     @Test

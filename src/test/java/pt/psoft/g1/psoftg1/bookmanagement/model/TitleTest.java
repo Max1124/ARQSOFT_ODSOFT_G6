@@ -67,4 +67,11 @@ class TitleTest {
         assertEquals("Some other title", title.toString());
     }
 
+    @Test
+    void ensureTitleOfExactlyTheMaximumLengthIsAccepted() {
+        final var maxLength = "a".repeat(128);
+        assertEquals(maxLength, new Title(maxLength).getTitle());
+        assertThrows(IllegalArgumentException.class, () -> new Title(maxLength + "a"));
+    }
+
 }
