@@ -1,0 +1,15 @@
+[Unit]
+Description=Library Management System (%i)
+After=network.target
+
+[Service]
+User=lms
+# SERVER_PORT and SPRING_PROFILES_ACTIVE for this environment.
+EnvironmentFile=/etc/lms/%i.env
+WorkingDirectory=/var/lib/lms/%i
+ExecStart=/usr/bin/java -Xmx384m -jar /opt/lms/%i/app.jar
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
