@@ -1,6 +1,6 @@
 # ADD — Extensibility
 
-Status: proposed design. Bibliographic sources (iteration 1) and lending policies (iteration 3) are designed; notifications are sketched. Nothing is implemented or verified.
+Status: lending policies (iteration 3) are implemented and verified by tests and an extension experiment; bibliographic sources (iteration 1) are designed and notifications are sketched; neither is implemented or verified.
 
 Requirements and scenarios: [ADD.md](ADD.md). Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. The detailed rationale is recorded in the linked technical memo.
 
@@ -291,12 +291,12 @@ Shows where the policy package sits between `LendingController`, `LendingService
 
 ### Design Kanban
 
-This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. No extensibility driver is marked addressed yet; implementation and verification are also pending.
+This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. Only lending policy extensibility (QAS3) is marked addressed, because it is also implemented and was checked with an extension experiment; the other drivers have no implementation or verification yet.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
 |  | Notification extensibility — QAS2, Bibliographic source extensibility — QAS1: common interface/adapters proposed; contract, registration mechanism and extension impact still need refinement/validation |  |
-| | Lending policy extensibility — QAS3: policy contract, selector and history snapshot proposed; renewal model on `Lending` not yet defined; extension impact not yet validated | |
+| | | Lending policy extensibility — QAS3: policy contract, selector, history snapshot and renewal implemented; adding a third policy touched one setup class, one properties file and new files only (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
 
@@ -309,13 +309,13 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 
 ### Analysis — Iteration 3
 
-- **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). QAS3 is not yet verified.
+- **Iteration goal:** structurally supported. A new policy is a new `LendingPolicy` implementation with its own parameters, plus a `PolicySelectionRule` when it needs its own eligibility condition, both registered at setup. `LendingServiceImpl`, `LendingController` and existing policies do not change (QAS3 response). The extension experiment below confirmed this.
 - **Selection (QAS8):** the selector runs on every new lending and renewal and only chooses a policy; it does not modify existing lendings. Details are in [Configurability.md](Configurability.md) (CFG-LP-01 to CFG-LP-04).
 - **Trade-off:** more types (contract, two policies, parameter objects, decision, selector, rules, history snapshot and provider) and an explicit rule order. If a future policy needs a fact the history snapshot does not provide, the snapshot and its provider change.
-- **Risks:** the Adaptive and renewal calculations are design decisions where the specification is silent; they do not affect the contract; renewal data on `Lending` is not yet modelled; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
-- **Extension experiment:** add a fake third policy and selection rule without changing the service, selector or existing policies. Record changed files (expected: new classes, setup registration and new tests only) and regression results.
+- **Risks:** the Adaptive and renewal calculations are design decisions where the specification is silent; they do not affect the contract; concurrent requests can both pass the active-lending limit (existing issue, not addressed here).
+- **Extension experiment (2026-10-23, scratch work reverted):** a fictional third policy was added: `PremiumLendingPolicy`, `PremiumPolicyParameters` (validated like the others) and `PremiumEligibilityRule` (10 or more completed lendings in the window and nothing overdue), placed before the Adaptive rule. Changed existing files: `LendingPoliciesConfig` (a policy bean, the rule in the ordered list), `LendingParametersConfig` (one parameter bean) and `library.properties` (four keys), 29 lines added and 1 changed in total. New files: the three classes above and one end-to-end test. Not changed: `LendingServiceImpl`, `LendingPolicySelector`, `StandardLendingPolicy`, `AdaptiveLendingPolicy`, the rules and parameters already there, `Lending`, `LendingController`, the repositories and the history provider. Regression: 366 of 367 tests passed apart from 2 cases of `LendingPoliciesConfigTest`, which expected a reliable reader to get the Adaptive policy; the new rule is first and the test reader also met its condition, so they received Premium. This shows rule order is a visible decision recorded in one place. The new end-to-end test passed: a reader with 10 completed lendings received the 30-day Premium period through the REST endpoint.
 - **Representative tests (QAS11):** one passing and one failing case per LP rule with a fixed `Clock` and no Spring or database; LP-SEL1 conditions and boundaries for the selector; `LendingServiceImpl` with a mocked selector and policy. Use Arrange → Act → Assert. Test design is detailed in [Testability.md](Testability.md).
-- **Remaining work:** model renewal on `Lending`, define REST rejection responses, then implement with tests.
+- **Remaining work:** none for the lending design; the registration step still edits one setup class (a possible refinement is to collect rules from the context so a new rule needs no edit there).
 
 The reported final coverage goal is at least 85%; metric and measured scope still need confirmation. Coverage alone does not verify extensibility or test quality.
 
