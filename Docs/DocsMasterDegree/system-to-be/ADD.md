@@ -6,7 +6,7 @@ This file details the ADD process used to develop new functionalities.
 
 - [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; only its proposed design is detailed so far. Not yet implemented.
 
-- [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1) and lending policies (iteration 3). Notifications remain planned; no test implementation is claimed.
+- [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1), notifications (iteration 2) and lending policies (iteration 3). Notification testing is designed; no notification test implementation is claimed.
 
 - [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Not yet implemented.
 
@@ -54,7 +54,7 @@ Below are listed the non-functional and functional requirements
 #### Reader notifications
 - US6: As a Librarian, I want the Reader to be notified when a lending is about to reach its due date, through the notification channels enabled in the system.
 - US7: As a Librarian, I want the Reader to be notified when a lending is overdue and a fine is being applied.
-- US8: As a Reader, I want to choose through which of the enabled channels (email, SMS, webhook) I receive notifications, being able to select more than one at a time.
+- US8: As a Reader, I want to choose through which of the enabled channels (email, SMS, webhook) I receive notifications, selecting at least one and being able to select more than one at a time.
 - US9: As an Administrator, I want to define at setup time which notification systems are enabled, without changing the source code.
 
 #### Lending policies
@@ -114,7 +114,7 @@ The Library Management service does not adequately support **Extensibility**, **
 | Environment | Design and development time, with email, SMS and webhook channels already in production. |
 | Artifact | Reader notification module: notification channel interface and channel implementations. |
 | Response | The developer implements the channel interface in a new class. The notification dispatcher discovers it and sends through it together with the other enabled channels. Readers can then select it as one of their channels. |
-| Response measure | One new interface plus specific implementations for at least SMS and e-mail. No changes to existing channels, the dispatcher, or the lending module. 100% of the existing tests still pass. Effort is at most 2 person-day. |
+| Response measure | One new implementation of the channel interface plus its registration at setup. No changes to existing channels, the dispatcher, or the lending module. 100% of the existing tests still pass. Effort is at most 2 person-days. |
 
 #### QAS3 – Adding a new lending policy
 **Related requirements:** US13, NFR "addition of new lending policies with limited impact"
@@ -164,8 +164,8 @@ The Library Management service does not adequately support **Extensibility**, **
 | Stimulus source | Reader, through the REST API. |
 | Environment | Runtime, under normal operation, with email, SMS and webhook enabled at setup. |
 | Artifact | Reader management module (reader notification preferences) and the notification dispatcher. |
-| Response | The system validates that every chosen channel is enabled and stores the preferences. Later notifications for that Reader go only through the chosen channels. A choice that includes a disabled channel is rejected with an error message naming that channel. |
-| Response measure | 0 code changes and 0 restarts. The new preferences apply to the next notification sent to that Reader. 100% of choices that include a disabled channel are rejected. Other Readers' preferences are unaffected. |
+| Response | The system validates that every chosen channel is enabled and stores the preferences. Later notifications for that Reader go only through the chosen channels. A choice that includes a disabled channel is rejected with an error message naming that channel, and a choice with no channel is rejected. |
+| Response measure | 0 code changes and 0 restarts. The new preferences apply to the next notification sent to that Reader. 100% of choices that include a disabled channel or no channel are rejected. Other Readers' preferences are unaffected. |
 
 #### QAS7 – Configuring lending policy parameters at setup
 **Related requirements:** US10, LP-CFG1, LP-CFG2

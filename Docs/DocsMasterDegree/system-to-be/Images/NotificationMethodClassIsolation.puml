@@ -5,22 +5,29 @@ skinparam shadowing false
 skinparam backgroundColor white
 title Notification Methods class isolation boundary
 component "AAA test" as Test
-rectangle "Class SUT" {
- component "Real Notification Service" as Service
+rectangle "Class SUT (one at a time)" {
+ component "Real Notification Service\n(or LendingServiceImpl dispatch,\nor preference validation)" as Service
 }
-component "Sending Notification" as Mechanism
+component "Sending Notification\n(delivery controlled)" as Mechanism
+component "ReaderRepository double" as Repo
+component "Recording NotificationService doubles\n(LendingServiceImpl tests only)" as Doubles
+component "Fixed enabled set\nand fixed clock" as Fixtures
 Test --> Service : inputs / assertions
 Service --> Mechanism
+Service --> Repo
+Service --> Doubles
+Service --> Fixtures
 
 
 note bottom of Service
   "Notification Service" in this graph is a stand-in
   for the different implementations of
-  INotificationService that will need their
+  NotificationService that will need their
   specific behaviour tested.
 end note
 
 note bottom of Mechanism
-  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https))
+  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https)).
+  Delivery stays inside each implementation; how tests control it (framework client or local receiver) is pending. 0 real messages.
 end note
 @enduml

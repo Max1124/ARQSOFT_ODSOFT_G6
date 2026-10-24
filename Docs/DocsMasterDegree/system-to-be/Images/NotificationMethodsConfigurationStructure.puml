@@ -8,12 +8,14 @@ title Notification configuration boundary
 component "External properties" as Properties
 component "Channel composition\n(startup)" as Composition
 component "Installed channel registry" as Registry
+component "Reader preference validation" as Preferences
 
 class LendingServiceImpl
-interface INotificationService
+interface NotificationService
 class SMSNotificationService
 class EmailNotificationService
 class WebhookNotificationService
+interface ReaderRepository
 
 Properties --> Composition : enabled channel identifiers
 Composition --> Registry : validate / resolve
@@ -26,10 +28,14 @@ Composition ..> SMSNotificationService : instantiates if enabled
 Composition ..> EmailNotificationService : instantiates if enabled
 Composition ..> WebhookNotificationService : instantiates if enabled
 
-Composition --> LendingServiceImpl : inject enabled instances\n(as INotificationService)
-LendingServiceImpl --> INotificationService : notify on enabled channels\nchosen by the reader
+Composition --> LendingServiceImpl : inject enabled instances\n(as NotificationService)
+LendingServiceImpl --> NotificationService : notify on enabled channels\nchosen by the reader
+LendingServiceImpl --> ReaderRepository : reads chosen channels
 
-SMSNotificationService ..|> INotificationService
-EmailNotificationService ..|> INotificationService
-WebhookNotificationService ..|> INotificationService
+Composition --> Preferences : enabled channel set
+Preferences --> ReaderRepository : stores chosen channels\n(rejects disabled ones)
+
+SMSNotificationService ..|> NotificationService
+EmailNotificationService ..|> NotificationService
+WebhookNotificationService ..|> NotificationService
 @enduml

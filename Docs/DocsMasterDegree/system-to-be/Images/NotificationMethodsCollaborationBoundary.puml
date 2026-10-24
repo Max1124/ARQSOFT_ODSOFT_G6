@@ -3,26 +3,43 @@
 left to right direction
 skinparam shadowing false
 skinparam backgroundColor white
-title Notification Methods retrieval collaboration boundary
+title Notification Methods collaboration boundary
 component "Test inputs\nand assertions" as Test
 rectangle "Declared real collaboration SUT" {
  component Controller
-component "Notification Service" as Service
-component "Sending Notification" as Mechanism
- Controller --> Service
- Service --> Mechanism
+ component "LendingServiceImpl\n(periodic check and dispatch)" as Lending
+ component "Channel composition" as Composition
+ component "Reader preference\nvalidation and storage" as Preferences
+ component "Notification Service" as Service
+ component "ReaderRepository" as Repo
+ Controller --> Preferences
+ Composition --> Lending
+ Lending --> Service
+ Lending --> Repo
+ Preferences --> Repo
+ Service --> Repo
 }
+component "Sending Notification\n(recording doubles or local receivers)" as Mechanism
+component "Test properties\n(enabled channels)" as Props
+component "Fixed Clock\n(outside SUT)" as Clock
+database "Dedicated test DB\nwith known readers and preferences" as DB
 Test --> Controller
+Test --> Lending : run periodic check
+Service --> Mechanism
+Composition ..> Props : bound at startup
+Lending --> Clock
+Repo --> DB
 
 
 note bottom of Service
   "Notification Service" in this graph is a stand-in
   for the different implementations of
-  INotificationService that will need their
+  NotificationService that will need their
   specific behaviour tested.
 end note
 
 note bottom of Mechanism
-  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https))
+  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https)).
+  It stays outside the SUT: 0 real messages (CON-TST-8).
 end note
 @enduml

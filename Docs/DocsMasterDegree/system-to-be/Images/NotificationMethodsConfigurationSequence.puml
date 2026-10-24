@@ -38,11 +38,12 @@ else Valid configuration
   opt Webhook channel enabled
     Composition -> Webhook ** : new WebhookNotificationService
   end
-  Composition -> Lending : Inject enabled instances\n(typed as INotificationService)
+  Composition -> Lending : Inject enabled instances\n(typed as NotificationService)
   note over Composition,Lending
     Only enabled implementations are instantiated;
     disabled channels send 0 notifications.
-    LendingServiceImpl depends only on INotificationService.
+    An unknown identifier stops startup (CFG-NOT-01).
+    LendingServiceImpl depends only on NotificationService.
     Configuration changes require a restart.
   end note
 end

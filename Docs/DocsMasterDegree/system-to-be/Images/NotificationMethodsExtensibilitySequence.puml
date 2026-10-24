@@ -3,9 +3,10 @@ actor Reader
 participant "LendingController" as API
 participant "LendingServiceImpl" as Lending
 participant "LendingRepository" as LRepo
-participant "SpringDataReaderRepositoryImpl" as RRepo
+participant "ReaderRepository" as RRepo
 participant "SMSNotificationService" as SMS
 participant "EmailNotificationService" as Email
+participant "WebhookNotificationService" as Webhook
 
 Reader -> API : Lend a book
 API -> Lending : create(lending request)
@@ -16,10 +17,15 @@ API --> Reader : Lending confirmation and return date
 
 ... Time passes until the lending nears its due date or becomes overdue ...
 
-note over Lending : Periodic check, triggered by a scheduler (see class list)
+note over Lending : Periodic check, triggered by a scheduler (EXT-NOT-05)
 Lending -> LRepo : Fetch active lendings
 LRepo --> Lending : Active lendings
 Lending -> Lending : Evaluate due date of each lending
+
+note over Lending, Webhook
+  Only the channels enabled at setup are injected into LendingServiceImpl;
+  of those, only the channels the reader has chosen are called (CFG-NOT-03).
+end note
 
 alt Lending is reaching its due date (US6)
     Lending -> RRepo : Get notification channels selected by the reader
@@ -32,9 +38,13 @@ alt Lending is reaching its due date (US6)
     end
     opt Email selected
         Lending -> Email : send(reader, due date warning)
-        Email -> RRepo : Get reader contact (EmailAddress)
-        RRepo --> Email : EmailAddress
+        Email -> RRepo : Get reader contact (Reader username)
+        RRepo --> Email : Username (email address)
         Email --> Reader : Sends notification via e-mail
+    end
+    opt Webhook selected
+        Lending -> Webhook : send(reader, due date warning)
+        Webhook --> Reader : Sends notification via webhook (target pending)
     end
 else Lending is overdue and a fine will be applied (US7)
     Lending -> RRepo : Get notification channels selected by the reader
@@ -47,9 +57,13 @@ else Lending is overdue and a fine will be applied (US7)
     end
     opt Email selected
         Lending -> Email : send(reader, overdue and fine warning)
-        Email -> RRepo : Get reader contact (EmailAddress)
-        RRepo --> Email : EmailAddress
+        Email -> RRepo : Get reader contact (Reader username)
+        RRepo --> Email : Username (email address)
         Email --> Reader : Sends notification via e-mail
+    end
+    opt Webhook selected
+        Lending -> Webhook : send(reader, overdue and fine warning)
+        Webhook --> Reader : Sends notification via webhook (target pending)
     end
 end
 @enduml

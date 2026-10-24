@@ -1,4 +1,5 @@
 @startuml
+title Notification methods extension point
 interface NotificationService
 class SMSNotificationService
 class EmailNotificationService
@@ -6,12 +7,14 @@ class WebhookNotificationService
 
 class LendingServiceImpl
 class LendingRepository
+class "Setup composition\n(notifications)" as Composition
 
 interface ReaderRepository
-interface SpringDataReaderRepositoryImpl
+class SpringDataReaderRepositoryImpl
 
 class ReaderDetails {
   PhoneNumber phoneNumber
+  chosen notification channels (proposed)
 }
 class Reader {
   String username
@@ -20,8 +23,9 @@ class Reader {
 SMSNotificationService ..|> NotificationService
 EmailNotificationService ..|> NotificationService
 WebhookNotificationService ..|> NotificationService
-SpringDataReaderRepositoryImpl --|> ReaderRepository
+SpringDataReaderRepositoryImpl ..|> ReaderRepository
 
+Composition ..> LendingServiceImpl : injects enabled channels
 LendingServiceImpl --> NotificationService : calls
 LendingServiceImpl --> LendingRepository : uses data from
 LendingServiceImpl --> ReaderRepository : uses data from
