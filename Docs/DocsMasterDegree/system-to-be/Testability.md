@@ -117,7 +117,7 @@ Source: faculty ADD material — Testability Tactics catalogue and Tactics (vi).
 
 - **Abstract Data Sources:** use the source interface and proposed transport contract to supply controlled bibliographic data and errors instead of contacting live providers (QAS9).
 - **Limit Structural Complexity:** separate coordination, provider mapping, merge and persistence so each responsibility has a clear test boundary (QAS9).
-- **Limit Nondeterminism:** use fixed inputs/responses and an explicit source order; simulate failures instead of depending on network timing or changing provider data. Final merge rules still need agreement (QAS9).
+- **Limit Nondeterminism:** use fixed inputs/responses and an explicit source order; simulate failures instead of depending on network timing or changing provider data. Source-order priority and list handling follow the confirmed bibliographic decisions in ADD.md (QAS9).
 - **Executable Assertions:** check expected fields, errors and relevant interactions with assertions that fail when the observed behaviour is wrong (QAS9).
 - **Sandbox:** run broader tests with local provider doubles and separate test data/storage where needed. The real backend components inside the declared SUT still execute (QAS9).
 
@@ -364,7 +364,7 @@ Bibliographic infrastructure is not domain merely because it contains branches. 
 |---|---|---|
 | Enabled sources only | Coordinator / class | Prepare source doubles and merge double → retrieve ISBN → assert the specified result, calls to enabled sources and no calls to disabled sources. |
 | Partial response | Provider mapper / class | Supply a fixed response missing optional fields → map → assert exact available/missing values and provenance. |
-| Data combination | Merge / class | Prepare partial normalized inputs → combine → assert field selection after precedence/list rules are agreed. |
+| Data combination | Merge / class | Prepare partial normalized inputs → combine → assert first-source priority, missing-field fallback, author-list warnings and unique genre suggestions. |
 | No match versus failure | Adapter/coordinator / separate class tests | Supply a successful lookup with no match, then a non-response/invalid response → execute → assert NotFound and Failure respectively. Verify combined outcomes separately in coordinator tests. |
 | Partial lookup success | Coordinator / class | Source doubles return Found and Failure; merge double returns known data → retrieve → assert returned data and a warning identifying the failed source. |
 | No successful match | Coordinator / class | All sources return NotFound, then repeat with NotFound and Failure → retrieve → assert no-match in the first case and incomplete lookup in the second. |
@@ -425,7 +425,7 @@ The columns are independent status lists: cells on the same row are not related.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
-| | Bibliographic isolation — QAS9: constructor injection, separated mapping/merge and transport contract proposed; source outcomes agreed in the memo; exact signatures, field merge rules and REST representation remain pending |  |
+| | Bibliographic isolation — QAS9: constructor injection, separated mapping/merge and transport contract proposed; source outcomes agreed in the memo; concrete contracts and test fixtures remain to be specified |  |
 | | Notification testability — QAS10: recording doubles, dispatch in `LendingServiceImpl`, SUT boundaries, boundary sketches, test categories and AAA cases proposed; control of channel delivery in tests, check schedule and failure behaviour still pending | |
 | | | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service) implemented; class, domain, mutation, collaboration and system tests written and passing (see Analysis — Iteration 3) |
 
@@ -434,7 +434,7 @@ The columns are independent status lists: cells on the same row are not related.
 - **Goal:** structurally supported by explicit dependencies and separated responsibilities; the class diagram records the proposed changes.
 - **Trade-off:** more composition and maintained collaborator contracts. Isolated tests cannot prove real wiring is correct.
 - **Verification:** construct the service and adapters with controlled collaborators; test mappers and merge with fixed data, then combine real implementations with a local provider double. Record the real production classes in each SUT.
-- **Pending:** exact transport/data contracts, field merge rules, REST representation and affected registration-domain scope. No implementation or passing tests are claimed.
+- **Pending:** concrete test fixtures, transport/data contracts and affected registration-domain scope. No implementation or passing tests are claimed.
 
 ### Analysis — Iteration 2
 

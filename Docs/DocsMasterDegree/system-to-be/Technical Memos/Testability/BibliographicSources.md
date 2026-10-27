@@ -56,7 +56,7 @@ Missing bibliographic fields alone do not make a response invalid. These outcome
 - **All sources return NotFound:** report that no matching book was found in the enabled sources.
 - **No Found and at least one Failure:** report that the lookup could not be completed; do not claim that all sources found no match.
 
-An incomplete lookup means that at least one source failed, not necessarily that fields are missing. Book registration remains subject to mandatory data and valid catalogue associations. Field merge rules, Java contracts and the REST response representation remain pending.
+An incomplete lookup means that at least one source failed, not necessarily that fields are missing. Book registration remains subject to mandatory data and valid catalogue associations. Expected merge and matching results follow the [confirmed rules in ADD.md](../../ADD.md#bibliographic-behaviour--confirmed-decisions).
 
 ## Motivation and trade-offs
 
@@ -72,9 +72,12 @@ B is selected to support QAS9 and matches Step 4 of Testability.md. A narrow tra
 ## Pending issues
 
 - Final constructor, transport and normalized-data contracts.
-- Provider-specific mapping and invalid-response criteria, field merge rules and REST response representation. Per-source and multiple-source outcome behaviour is agreed above.
+- Provider-specific response fixtures, invalid-response criteria and REST assertions.
 - Any catalogue-domain changes actually needed by bibliographic registration.
 
 ## Verification
+
+Verify priority with conflicting titles, missing-description fallback, differing author-list warnings, unique genre suggestions, ambiguous catalogue matches and no implicit author/genre creation. Test lookup without persistence and ISBN registration with resolved versus incomplete associations.
+
 
 Test the service/adapters with controlled collaborators, mappers/merge with fixed data, then real collaborations using a local HTTP double. Follow the declared SUT boundary and preserve the assignment's class, affected-domain, mutation, collaboration and system scopes. No implementation, coverage or test results are claimed.

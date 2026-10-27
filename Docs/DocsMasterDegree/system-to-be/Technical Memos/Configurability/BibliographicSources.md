@@ -36,7 +36,7 @@ Read an external ordered identifier list at startup, validate it against install
 - **CFG-BIB-02:** reject missing/empty lists, unknown or repeated identifiers and duplicate registered identifiers. Trim whitespace; identifiers are case-sensitive. These are proposed validation rules.
 - **CFG-BIB-03:** preserve configured order in an immutable collection for the running instance. Apply changes after restart; never use provider-name conditionals in the service.
 
-Selection validation performs no live provider requests. Disabled sources receive no lookup calls. Source order does not by itself define merge conflict resolution. Adding a new source implementation requires development/deployment; configuration chooses already installed sources.
+Selection validation performs no live provider requests. Disabled sources receive no lookup calls. Preserve source order to apply the [merge priority defined in ADD.md](../../ADD.md#bibliographic-behaviour--confirmed-decisions). Adding a new source implementation requires development/deployment; configuration chooses already installed sources.
 
 ## Motivation and trade-offs
 
@@ -53,7 +53,7 @@ The choice meets setup selection while reusing the extensibility interface and t
 - Final external file loading mechanism, deployment path and precedence with environment/profile values.
 - Review the proposed property name, stable identifiers and empty/duplicate rejection rules with the group.
 - Finalize composition signatures and concrete setup/error examples.
-- Align source precedence and partial/failure behaviour with the extensibility memo; these remain separate from valid configuration.
+- Implement the confirmed source-order priority and lookup outcomes consistently with the other memos; valid configuration does not guarantee provider availability.
 
 ## Verification
 

@@ -122,7 +122,7 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | B — Identifier list bound to injected sources | A composition element selects the configured implementations and injects them into the service at startup. | Service free of provider names and properties; supports one or several sources | A composition element and an identifier convention |
 | C — Enabled sources stored in the database | Selection is edited through an administration API. | Changes without restart | Adds storage and API behaviour beyond setup-time selection |
 
-**Proposed choice:** B. It supports US5/QAS4 by selecting installed sources at startup without changing the service, following EXT-BIB-04.
+**Proposed choice:** B. The confirmed bibliographic behaviour uses the external source order as merge priority, with changes applied after restart; see [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions). It supports US5/QAS4 by selecting installed sources at startup without changing the service, following EXT-BIB-04.
 
 #### Alternatives — Iteration 2
 

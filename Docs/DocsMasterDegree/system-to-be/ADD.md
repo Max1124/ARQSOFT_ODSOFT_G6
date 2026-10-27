@@ -64,6 +64,17 @@ Below are listed the non-functional and functional requirements
 - US13: As a Reader, I want new lendings to follow the applicable Standard or Adaptive policy and receive a reason when rejected.
 - US14: As a Reader, I want to renew a lending only when the re-evaluated policy permits it.
 
+### Bibliographic behaviour — Confirmed decisions
+
+- **Data:** retrieve ISBN, title, available description, author names and suggested genres, with source provenance. External names are metadata, not catalogue entities. Automatic cover import is outside this iteration.
+- **Merge:** configured source order defines priority. Use the first available title/description; later successful sources fill missing fields. Keep the first non-empty author list and report differing lists rather than automatically unioning them. Combine genre suggestions without duplicates; the registered book still has one catalogue genre.
+- **Catalogue associations:** associate a genre automatically only when exactly one catalogue entry matches after trimming outer whitespace and ignoring case. Multiple matching suggestions remain ambiguous and require librarian selection. A matching author name alone is a suggestion; automatic author association requires a reliable previously confirmed correspondence. Otherwise ask the librarian to select or explicitly create the author. Retrieval never creates authors or genres automatically.
+- **Workflow:** separate lookup without persistence from ISBN-based registration. Register directly only when mandatory data and catalogue associations are resolved; otherwise return the retrieved information and completion needs without saving an incomplete book. The librarian can correct the proposed data.
+- **Configuration:** read an external ordered source list at startup; invalid configuration prevents startup and changes take effect after restart. Provider communication remains behind `BibliographicTransport` with a defined timeout.
+
+These behavioural decisions are confirmed. Implementation details remain to be specified: Java/REST contracts, storage of previously confirmed author correspondences, external configuration loading and HTTP client settings. Search by title remains proposed scope.
+
+
 ### Lending rules from the faculty specification
 Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 4 (automatic policy selection, brief 1.3.3.3 item 3) and section 5 (external setup-time parameter configuration, US10/QAS7).
 - LP-S1 (2.1): Standard permits at most `MaxActiveLendings > 0` active lendings.

@@ -38,9 +38,15 @@ EXT-BIB-01 (proposed): `BibliographicSource` defines ISBN lookup; Google/Open Li
 
 EXT-BIB-02 (agreed with the group): associate existing authors/genre automatically only when matching is unambiguous under defined rules. The librarian completes missing/ambiguous data and explicitly creates missing catalogue records when appropriate. Retrieval itself creates no authors/genres.
 
-EXT-BIB-03 (proposed): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Source precedence, conflicts and list handling remain pending.
+EXT-BIB-03 (proposed): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Apply the [confirmed merge and catalogue rules](../../ADD.md#bibliographic-behaviour--confirmed-decisions).
 
 EXT-BIB-04 (proposed): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; the startup composition proposal is detailed in [Configurability.md](../../Configurability.md), with external loading and precedence still pending.
+
+### Lookup outcomes — Confirmed behaviour
+
+Each source returns Found, NotFound or Failure. Missing bibliographic fields alone do not constitute a failure. When at least one source returns Found, use the available data; if another source fails, include a warning identifying that source and stating that the lookup is incomplete. If all sources return NotFound, report no match. If no source returns Found and at least one fails, report that the lookup could not be completed rather than claiming no match.
+
+See the [testability memo](../Testability/BibliographicSources.md) for verification of these outcomes. Registration still requires valid mandatory data and catalogue associations.
 
 ## Motivation and trade-offs
 
@@ -53,9 +59,9 @@ New providers can implement the same contract without provider-specific branches
 
 ## Pending issues
 
-- Final API and Java contracts, catalogue matching and missing-data responses.
-- Source order, conflicting/list values and explicit librarian overrides.
-- Partial success and all-provider failure semantics.
+- Final API and Java contracts and missing-data response representation; representation/storage of previously confirmed author correspondences.
+- Representation of librarian corrections and precise text-normalization rules for comparing provider values.
+- Provider-specific invalid-response criteria and the REST representation of the confirmed lookup outcomes and warnings.
 - Actual extension impact and regression results after implementation.
 
 ## Verification

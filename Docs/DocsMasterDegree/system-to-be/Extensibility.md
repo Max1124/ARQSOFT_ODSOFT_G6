@@ -284,7 +284,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 |---|---|---|
 | Source lookup | ISBN | Normalized partial data or explicit no-match/failure outcome; no catalogue writes |
 | Coordinator | ISBN and injected sources | Combined data and source outcomes; no automatic author/genre creation |
-| Merge | Ordered normalized successful results | Combined data/provenance; precedence/conflict rules pending |
+| Merge | Ordered normalized successful results | Combined data/provenance using configured source priority and confirmed list rules in ADD.md |
 | Registration | Complete required metadata and resolved catalogue associations | Valid saved `Book`, or clear validation response without saving an incomplete book |
 | Notification channel | Lending event (due date approaching, or overdue with fine) and reader | Message delivered through that channel to the reader's contact data from `ReaderRepository`; no changes to lendings or readers; failure behaviour pending |
 | Lending service — notification | Lendings found by the periodic check and the reader's chosen channels | One notification per chosen and enabled channel; the reader must have selected at least one channel and have valid contact data for it |
@@ -311,7 +311,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ![Bibliographic source structure](Images/BibliographicSourceStructure.png)
 
-**Pending decisions:** matching rules and REST responses; no-match versus provider failure; partial/all-provider failure behaviour; source precedence and conflicting/list values; librarian overrides. Provider schemas/endpoints must be checked against official documentation when implementing. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
+**Confirmed behaviour:** data, source-order priority, list handling, conservative catalogue association and lookup/registration separation are specified in [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions); source outcomes are agreed in the testability memo. **Implementation details:** see the bibliographic memo for the remaining contracts and catalogue-association storage. Provider schemas/endpoints must be checked against official documentation when implementing. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
 
 ### Sequence sketch — Notification methods information
 
@@ -365,7 +365,7 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 - **Risks:** a provider may need fields or outcomes absent from `BibliographicData`; changing that shared contract can affect consumers and merge rules.
 - **Extension experiment:** add a third fake source and its registration, then enable it through setup configuration. Record changed files and check that the coordinator, existing adapters and book business logic remain unchanged for this example.
 - **Representative tests:** check partial metadata and source outcomes with controlled responses; test merge separately and run relevant registration regression tests (QAS9). See [Testability.md](Testability.md).
-- **Remaining work:** finalize lookup/registration contracts, matching, merge and failure semantics. [Configurability.md](Configurability.md) refines source selection; implementation supplies extension-impact evidence later.
+- **Remaining work:** finalize lookup/registration contracts, confirmed author correspondence storage and exact comparison rules; agreed merge and failure behaviour guides implementation. [Configurability.md](Configurability.md) refines source selection; implementation supplies extension-impact evidence later.
 
 ### Analysis — Iteration 2
 
