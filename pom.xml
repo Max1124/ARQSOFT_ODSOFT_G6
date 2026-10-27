@@ -264,6 +264,35 @@
 				</plugins>
 			</build>
 		</profile>
+
+        <!-- Current genre/reader behaviour; no bibliographic or notification functionality. -->
+        <profile>
+            <id>reader-genre</id>
+            <properties>
+                <test>pt/psoft/g1/psoftg1/genremanagement/**/*Test,pt/psoft/g1/psoftg1/readermanagement/**/*Test,pt/psoft/g1/psoftg1/system/ReaderGenreSystemTest</test>
+            </properties>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.pitest</groupId>
+                        <artifactId>pitest-maven</artifactId>
+                        <configuration>
+                            <targetClasses combine.self="override">
+                                <param>pt.psoft.g1.psoftg1.genremanagement.model.Genre</param>
+                                <param>pt.psoft.g1.psoftg1.readermanagement.model.PhoneNumber</param>
+                                <param>pt.psoft.g1.psoftg1.readermanagement.model.ReaderNumber</param>
+                                <param>pt.psoft.g1.psoftg1.readermanagement.model.BirthDate</param>
+                            </targetClasses>
+                            <targetTests combine.self="override">
+                                <param>pt.psoft.g1.psoftg1.genremanagement.model.*Test</param>
+                                <param>pt.psoft.g1.psoftg1.readermanagement.model.*Test</param>
+                            </targetTests>
+                            <reportsDirectory>${project.build.directory}/pit-reports-reader-genre</reportsDirectory>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
 	</profiles>
 
 </project>
