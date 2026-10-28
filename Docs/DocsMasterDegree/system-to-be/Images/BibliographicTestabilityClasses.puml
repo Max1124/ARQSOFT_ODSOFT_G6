@@ -3,23 +3,23 @@
 skinparam shadowing false
 skinparam backgroundColor white
 hide empty members
-title Bibliographic testability - proposed class design
+title Bibliographic testability - implemented class design
 class BibliographicService {
  +BibliographicService(sources: List<BibliographicSource>, merge: BibliographicMerge)
- +retrieve(isbn): BibliographicData
+ +retrieve(isbn): LookupResult
 }
 interface BibliographicSource {
  +lookupByIsbn(isbn): SourceOutcome
 }
 class BibliographicMerge {
- +combine(results): BibliographicData
+ +combine(isbn, results): LookupResult
 }
 class GoogleBooksAdapter {
- +GoogleBooksAdapter(transport: BibliographicTransport, mapper: GoogleBooksMapper)
+ +GoogleBooksAdapter(transport: BibliographicTransport, mapper: GoogleBooksMapper, endpoint: String)
  +lookupByIsbn(isbn): SourceOutcome
 }
 class OpenLibraryAdapter {
- +OpenLibraryAdapter(transport: BibliographicTransport, mapper: OpenLibraryMapper)
+ +OpenLibraryAdapter(transport: BibliographicTransport, mapper: OpenLibraryMapper, endpoint: String)
  +lookupByIsbn(isbn): SourceOutcome
 }
 interface BibliographicTransport {
@@ -29,10 +29,10 @@ class HttpBibliographicTransport {
  +execute(request): TransportResponse
 }
 class GoogleBooksMapper {
- +map(response): BibliographicData
+ +map(isbn, body): SourceOutcome
 }
 class OpenLibraryMapper {
- +map(response): BibliographicData
+ +map(isbn, body): SourceOutcome
 }
 BibliographicService --> "1..*" BibliographicSource : injected sources
 BibliographicService --> BibliographicMerge : injected
@@ -43,4 +43,12 @@ OpenLibraryAdapter --> BibliographicTransport : injected
 GoogleBooksAdapter --> GoogleBooksMapper : injected
 OpenLibraryAdapter --> OpenLibraryMapper : injected
 HttpBibliographicTransport ..|> BibliographicTransport
+class BibliographicRegistrationService
+class CatalogueMatcher
+class AuthorCorrespondence
+interface AuthorCorrespondenceRepository
+BibliographicRegistrationService --> BibliographicService
+BibliographicRegistrationService --> CatalogueMatcher
+CatalogueMatcher --> AuthorCorrespondenceRepository
+AuthorCorrespondenceRepository --> AuthorCorrespondence
 @enduml

@@ -1,5 +1,7 @@
 # Technical Memo — TST-BIB: Bibliographic testability
 
+To see the implementation: [implemented contracts and verification](../../BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
+
 Related iteration: [Testability, iteration 1](../../Testability.md). Primary driver: QAS9; related US1/US3 and QAS4. Test categories from ProjectStatement.pdf section 1.3.3.4 constrain later verification.
 
 ## Issue
@@ -28,7 +30,7 @@ Executable assertions and sandboxed collaboration tests verify the resulting str
 - QAS9 requires reproducible tests without live provider calls.
 - Existing Author construction creates Name/Bio internally, illustrating hidden construction under the classroom SUT convention. Typed parameters alone do not guarantee isolation.
 - A mapper's location follows its responsibility: API views/links belong at the REST boundary; external response mapping belongs with provider adapters.
-- Bibliographic classes remain proposals. This decision refines Extensibility rather than claiming to refactor existing bibliographic implementations.
+- Bibliographic classes implement the Extensibility design; no unrelated Author refactoring was required.
 
 ## Solution
 
@@ -65,19 +67,10 @@ Explicit collaborators make inputs and failures controllable and allow failures 
 ## Alternatives
 
 - **A — Create collaborators internally:** less composition, but construction is coupled to behaviour and dependencies are harder to replace.
-- **B — Receive collaborators through constructors (selected proposal):** separate construction from behaviour and split mapping/merge responsibilities, accepting additional composition.
+- **B — Receive collaborators through constructors (selected and implemented):** separate construction from behaviour and split mapping/merge responsibilities, accepting additional composition.
 
-B is selected to support QAS9 and matches Step 4 of Testability.md. A narrow transport contract is part of this solution; the HTTP library and final signature remain pending.
-
-## Pending issues
-
-- Final constructor, transport and normalized-data contracts.
-- Provider-specific response fixtures, invalid-response criteria and REST assertions.
-- Any catalogue-domain changes actually needed by bibliographic registration.
+B is selected to support QAS9 and matches Step 4 of Testability.md. A narrow transport contract is part of this solution; Java HttpClient implements execute(URI): TransportResponse, with a configurable timeout.
 
 ## Verification
 
-Verify priority with conflicting titles, missing-description fallback, differing author-list warnings, unique genre suggestions, ambiguous catalogue matches and no implicit author/genre creation. Test lookup without persistence and ISBN registration with resolved versus incomplete associations.
-
-
-Test the service/adapters with controlled collaborators, mappers/merge with fixed data, then real collaborations using a local HTTP double. Follow the declared SUT boundary and preserve the assignment's class, affected-domain, mutation, collaboration and system scopes. No implementation, coverage or test results are claimed.
+52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../BibliographicImplementation.md).

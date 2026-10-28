@@ -3,20 +3,22 @@
 allowmixing
 skinparam shadowing false
 skinparam backgroundColor white
-title Bibliographic configuration boundary
-component "External properties" as Properties
-component "Source composition\n(startup)" as Composition
-component "Installed source registry" as Registry
+title Bibliographic startup configuration - implemented elements
+component "Spring Environment\nexternal properties and overrides" as Properties
+class BibliographicConfiguration
+class SourceSelection
+class SourceRegistration
 class BibliographicService
 interface BibliographicSource
 class GoogleBooksAdapter
 class OpenLibraryAdapter
-Properties --> Composition : ordered identifiers
-Composition --> Registry : validate / resolve
-Registry --> BibliographicSource : installed implementations
-Composition --> BibliographicService : inject selected collection
+Properties --> BibliographicConfiguration : configured identifiers
+BibliographicConfiguration --> SourceSelection : select(identifiers, registrations)
+SourceSelection --> SourceRegistration : build temporary map / resolve IDs
+SourceRegistration --> BibliographicSource : registered implementation
+BibliographicConfiguration --> BibliographicService : inject selected ordered collection
 BibliographicService --> BibliographicSource : lookup on enabled sources
 GoogleBooksAdapter ..|> BibliographicSource
 OpenLibraryAdapter ..|> BibliographicSource
+note bottom of SourceSelection : Registry is a local map, not a standalone registry class.
 @enduml
-

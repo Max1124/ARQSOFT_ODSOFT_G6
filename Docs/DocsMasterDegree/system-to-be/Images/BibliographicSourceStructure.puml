@@ -13,7 +13,9 @@ class GoogleBooksAdapter
 class OpenLibraryAdapter
 BibliographicService --> BibliographicSource : uses enabled collection
 BibliographicService --> BibliographicMerge : combines results
-BibliographicSource --> BibliographicData : returns
+class SourceOutcome
+BibliographicSource --> SourceOutcome : returns
+SourceOutcome --> BibliographicData : optional data
 GoogleBooksAdapter ..|> BibliographicSource
 OpenLibraryAdapter ..|> BibliographicSource
 @enduml

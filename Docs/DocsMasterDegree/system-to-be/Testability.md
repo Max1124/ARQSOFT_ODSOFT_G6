@@ -1,5 +1,7 @@
 # ADD — Testability
 
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+
 Requirements and scenarios: ADD.md. Organization follows the faculty material Something about Attribute-Driven Design 0.9, Steps 1–8. The detailed rationale is recorded in the linked technical memos.
 
 ## Step 1 — Review inputs
@@ -15,7 +17,7 @@ For lending policies, QAS11 requires each policy rule, the parameter constraints
 ### Current limitations
 
 - `BookServiceImpl.create` resolves authors/genre, constructs a real `Book` and saves it through the repository. No `BookServiceImplTest` was found in the current test tree when this was written; an as-is `BookServiceImplTest` with doubles was added on 2026-10-23. Future tests must explicitly define which collaborators are real and which are replaced before claiming a single-class SUT.
-- The bibliographic contract, coordinator, adapters and merge are design proposals, not implemented classes in the current source tree.
+- The bibliographic contract, coordinator, adapters and merge are implemented; class and collaboration test boundaries are documented in the implementation report.
 - `Author` constructs `Name` and `Bio` internally. Under the classroom single-class SUT convention, tests exercising this construction include real collaborators. This observation motivates explicit dependencies, but the proposed bibliographic design does not require changing the `Author` constructor.
 - `AuthorViewMapper` is used by the controller to build API views and HTTP links. This placement matches its responsibility and is not itself a testability defect. No relocation of existing REST mappers is required by this bibliographic iteration; provider response mapping is handled separately beside the external adapters.
 - Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule in `LendingServiceImpl` and the reader preference storage are design proposals, not implemented classes. Each implementation performs its own delivery (EXT-NOT-02); real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. Due-date and overdue events are detected by a periodic, scheduler-triggered check in `LendingServiceImpl` (Extensibility sequence sketch); the schedule itself, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values.
@@ -115,7 +117,7 @@ Source: faculty ADD material — Testability Tactics catalogue and Tactics (vi).
 
 #### Selected catalogue tactics — Iteration 1
 
-- **Abstract Data Sources:** use the source interface and proposed transport contract to supply controlled bibliographic data and errors instead of contacting live providers (QAS9).
+- **Abstract Data Sources:** use the source interface and implemented transport contract to supply controlled bibliographic data and errors instead of contacting live providers (QAS9).
 - **Limit Structural Complexity:** separate coordination, provider mapping, merge and persistence so each responsibility has a clear test boundary (QAS9).
 - **Limit Nondeterminism:** use fixed inputs/responses and an explicit source order; simulate failures instead of depending on network timing or changing provider data. Source-order priority and list handling follow the confirmed bibliographic decisions in ADD.md (QAS9).
 - **Executable Assertions:** check expected fields, errors and relevant interactions with assertions that fail when the observed behaviour is wrong (QAS9).
@@ -250,7 +252,7 @@ Each source distinguishes Found, NotFound and Failure. Successful data remains u
 | Test fixtures and doubles | Supply explicit inputs and record relevant interactions. | Test-only code; no substitute for exercising the real SUT | CON-TST-2, CON-TST-4 |
 | Registration domain classes | Enforce the rules assigned to each domain class. | Transparent-box candidates where actually affected | CON-TST-1, CON-TST-3 |
 
-Names and proposed separations are not implemented contracts. Adapter/mapper/transport boundaries must be finalized before claiming isolated class coverage.
+Adapter/mapper/transport contracts are implemented. Tests that execute real helpers or value objects declare the wider collaboration boundary.
 
 ### Responsibility assignment rationale — Iteration 2
 
@@ -391,7 +393,7 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 
 ![Bibliographic testability class design](Images/BibliographicTestabilityClasses.png)
 
-The diagram shows how bibliographic classes receive their dependencies through constructors. Communication, mapping and merge have separate responsibilities. This allows each class to be tested with controlled collaborators, without calling real external APIs.
+This is a focused view of implemented testability dependencies, not a complete class inventory. Constructors expose collaborators and communication, mapping and merge are separated. Tests that execute real helpers or value objects are identified as small collaborations in the implementation report.
 
 ### Notification Method isolation boundary
 
@@ -425,16 +427,17 @@ The columns are independent status lists: cells on the same row are not related.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
-| | Bibliographic isolation — QAS9: constructor injection, separated mapping/merge and transport contract proposed; source outcomes agreed in the memo; concrete contracts and test fixtures remain to be specified |  |
+| | | Bibliographic isolation — QAS9: implemented boundaries and 52 passing tests; see measured coverage and mutation scope below |
 | | Notification testability — QAS10: recording doubles, dispatch in `LendingServiceImpl`, SUT boundaries, boundary sketches, test categories and AAA cases proposed; control of channel delivery in tests, check schedule and failure behaviour still pending | |
 | | | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service) implemented; class, domain, mutation, collaboration and system tests written and passing (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
 
-- **Goal:** structurally supported by explicit dependencies and separated responsibilities; the class diagram records the proposed changes.
-- **Trade-off:** more composition and maintained collaborator contracts. Isolated tests cannot prove real wiring is correct.
-- **Verification:** construct the service and adapters with controlled collaborators; test mappers and merge with fixed data, then combine real implementations with a local provider double. Record the real production classes in each SUT.
-- **Pending:** concrete test fixtures, transport/data contracts and affected registration-domain scope. No implementation or passing tests are claimed.
+- **Goal:** Implemented constructor injection, transport abstraction, separate mapping/merge and explicit outcomes support controlled verification.
+- **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
+- **Verification:** Class, domain, collaboration and real HTTP/JWT system scopes are exercised with local providers. Helpers/value objects executing real behaviour are declared as collaboration, not strict single-class isolation.
+- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 
 ### Analysis — Iteration 2
 
@@ -458,7 +461,7 @@ The columns are independent status lists: cells on the same row are not related.
 
 ## Step 8 — Refine as necessary
 
-Resolve the pending contracts with concrete examples; update the memo and boundary sketches; implement a small class-level case and then its collaboration test. Refine existing tests only where relevant, without mass-refactoring every module. Continue with the notification and lending iterations after reviewing their drivers.
+For bibliography, integrate the existing tests into Jenkins and validate deployment and live-provider behaviour. Refine existing tests only where relevant, without mass-refactoring every module. Continue with the notification and lending iterations after reviewing their drivers.
 
 For notifications: decide how channel tests control delivery and the failure behaviour first; then write the recording-double class tests for dispatch in `LendingServiceImpl` and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests.
 

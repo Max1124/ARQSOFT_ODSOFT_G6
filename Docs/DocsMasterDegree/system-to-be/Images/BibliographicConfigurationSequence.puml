@@ -1,36 +1,24 @@
 @startuml
 skinparam shadowing false
 skinparam backgroundColor white
-
 title Bibliographic source selection at startup
-
 actor Administrator
-participant "External configuration" as Config
-participant "Source composition" as Composition
-participant "Installed source registry" as Registry
+participant "Spring Environment" as Config
+participant BibliographicConfiguration as Composition
+participant SourceSelection as Selection
 participant BibliographicService as Service
-
-Administrator -> Config : Set bibliographic.sources before startup
-
-Composition -> Config : Read identifier list
-Config --> Composition : Configured value
-
-Composition -> Composition : Parse and validate list
-Composition -> Registry : Resolve identifiers / validate uniqueness
-Registry --> Composition : Matching sources or validation error
-
-alt Invalid configuration
-  Composition -> Composition : Throw configuration exception
-  note right of Composition
-    Application startup fails.
-    Error is reported in application logs.
-  end note
-else Valid configuration
-  Composition -> Service : Create with ordered selected sources
-  note over Composition,Service
-    No live provider lookup during selection.
-    Configuration changes require a restart.
-  end note
+Administrator -> Config : Set external bibliographic.sources before restart
+Config -> Composition : Bind ordered identifier string
+note over Composition : Spring supplies installed SourceRegistration beans.
+Composition -> Selection : select(configured, installed registrations)
+Selection -> Selection : Build local map; reject duplicate registrations
+Selection -> Selection : Validate and resolve identifiers in order
+alt Invalid selection
+ Selection --> Composition : IllegalArgumentException
+ note over Composition : Application startup fails.
+else Valid selection
+ Selection --> Composition : Immutable ordered source list
+ Composition -> Service : new BibliographicService(selected, merge)
+ note over Composition,Service : No provider lookup during selection.\nChanges take effect after restart.
 end
-
 @enduml

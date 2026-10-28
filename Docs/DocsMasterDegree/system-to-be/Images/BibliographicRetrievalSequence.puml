@@ -1,21 +1,28 @@
 @startuml
 skinparam shadowing false
 skinparam backgroundColor white
-title Bibliographic retrieval
+title Bibliographic lookup - both sources enabled
 actor Librarian
-participant "Book REST API" as API
+participant BibliographicController as API
+participant BibliographicRegistrationService as Registration
 participant BibliographicService as Service
 participant GoogleBooksAdapter as Google
 participant OpenLibraryAdapter as Open
 participant BibliographicMerge as Merge
-Librarian -> API : Request metadata by ISBN
-API -> Service : retrieve(isbn)
+participant CatalogueMatcher as Catalogue
+Librarian -> API : GET /api/bibliographic/{isbn}
+API -> Registration : preview(isbn)
+Registration -> Service : retrieve(isbn)
 Service -> Google : lookupByIsbn(isbn)
-Google --> Service : Normalized data / outcome
+Google --> Service : SourceOutcome
 Service -> Open : lookupByIsbn(isbn)
-Open --> Service : Normalized data / outcome
-Service -> Merge : Combine successful results
-Merge --> Service : Combined metadata
-Service --> API : Metadata and source outcomes
-API --> Librarian : Retrieved metadata
+Open --> Service : SourceOutcome
+Service -> Merge : combine(isbn, all outcomes)
+Merge --> Service : LookupResult (data, outcomes, warnings)
+Service --> Registration : LookupResult
+Registration -> Catalogue : resolve(data, empty overrides)
+Catalogue --> Registration : CatalogueResolution (suggestions, needs)
+Registration --> API : Preview(lookup, catalogue)
+API --> Librarian : Metadata, warnings and completion needs
+note over Registration,Catalogue : Lookup does not save a book or create authors/genres.
 @enduml

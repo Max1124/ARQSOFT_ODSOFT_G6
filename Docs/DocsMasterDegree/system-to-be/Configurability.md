@@ -1,5 +1,7 @@
 # ADD — Configurability
 
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+
 Requirements and scenarios: [ADD.md](ADD.md). 
 Extensibility design this document builds on: [Extensibility.md](Extensibility.md). 
 Lending rules: *ARQSOFT 2026-2027 Lending Policies Specification v1.0*. 
@@ -70,7 +72,7 @@ Selection rationale: section 5 makes every quantitative parameter a setup-time c
 
 As-is basis:
 
-- There is no configuration for bibliographic sources or notification channels in the current code; neither area exists as a module yet (see [Extensibility.md](Extensibility.md)).
+- The original as-is had no source/channel configuration. Bibliographic source selection is now implemented; notification scope is unchanged (see [Extensibility.md](Extensibility.md)).
 - `LendingServiceImpl.create` applies a single fixed rule set to every reader (rejects when one lending is overdue, when three are outstanding — hardcoded — and uses `lendingDurationInDays` from `config/library.properties`). There is no policy, no per-reader selection and no renewal.
 - `Lending` obtains the current date with `LocalDate.now()`.
 
@@ -246,9 +248,9 @@ At startup the binding reads the lending properties and builds the three paramet
 
 **Pending decisions:**
 
-- Property names, file location and environment-variable precedence for the bibliographic and notification keys. Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
+- Notification property names, file location and environment-variable precedence. Bibliographic settings and loading are specified in [the implementation report](BibliographicImplementation.md). Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
 - Lending: the old `lendingDurationInDays` key was replaced by `lending.standard.lending-period-days`, and `MinOnTimeRatio` is a percentage (`lending.selection.min-on-time-ratio-percent`).
-- Review the proposed rejection of an empty bibliographic source list; behaviour when no notification channel is enabled remains open.
+- Bibliographic empty-list rejection is implemented; behaviour when no notification channel is enabled remains open.
 - Stored reader preferences that include a channel disabled at a later setup (for example a reader whose only chosen channel is no longer enabled).
 - Source of the webhook target.
 
@@ -256,11 +258,11 @@ At startup the binding reads the lending properties and builds the three paramet
 
 ### Design Kanban
 
-This board evaluates the configurability drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution. Only the lending drivers (QAS7, QAS8) are marked addressed, because they are also implemented and tested; the others have no implementation or verification yet.
+This board evaluates the configurability drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution. Bibliographic QAS4 is addressed with implemented startup binding and tests; deployment evidence is distinguished below. Other iteration statuses remain separate.
 
 | Not addressed                                                                                                                                                                             | Partially addressed | Addressed in the design |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
-|                                                                                                                                                                                           | Bibliographic source selection — QAS4: external property, validation, ordered composition and diagrams specified; configuration loading/precedence and executable examples remain pending | |
+| | | Bibliographic source selection — QAS4: startup selection and validation implemented and tested; Azure configuration experiment remains separate |
 |                                                                                                                                                                                           | Notification channel selection and reader preferences — QAS5, QAS6: enabled set, validation and storage in `ReaderDetails` proposed; property format and failure behaviour still need refinement  | |
 |                                                                                                                                                                                           | | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup from `lending.*` keys, and a per-request selector, implemented and tested |
 
@@ -268,10 +270,11 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
 
 ### Analysis — Iteration 1
 
-- **Iteration goal:** source selection is supported by external configuration and startup composition (QAS4); implementation is pending.
-- **Trade-off:** a composition element and identifier validation; changing the selection requires a restart.
-- **Verification:** enable Google Books, Open Library and both; confirm that only enabled sources are queried. Change configuration using the same application artifact and verify the effect after restart. Check invalid identifiers and lists with controlled providers.
-- **Remaining work:** finalize property names, external loading and precedence, and confirm the proposed validation rules. No test results are claimed.
+- **Goal:** Implemented bibliographic.sources binding, identifier validation and immutable ordered selection at startup.
+- **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
+- **Verification:** Startup tests accept single/combined sources and reversed order, reject invalid settings, and test order preservation. Spring external-file loading and environment overrides are documented; the same-artifact Azure experiment and setup-time measurement remain unperformed.
+- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 
 ### Analysis and next verification — Iterations 2 and 3
 

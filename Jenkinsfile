@@ -13,7 +13,7 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending classes (slow on the small VM)')
+        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending and bibliographic classes (slow on the small VM)')
     }
 
     environment {
@@ -21,6 +21,7 @@ pipeline {
         PATH = "${JAVA_HOME}/bin:${env.PATH}"
         // -Plending limits tests, coverage, PIT and SpotBugs to the lending policies; other owners add their own profile.
         MVN = './mvnw -B -Plending'
+        MVN_BIB = './mvnw -B -Pbibliographic'
         JAR = 'target/psoft-g1-0.0.1-SNAPSHOT.jar'
     }
 
@@ -46,6 +47,21 @@ pipeline {
             }
         }
 
+        stage('Bibliographic tests') {
+            steps {
+                // Do not clean: preserve the packaged JAR and lending reports.
+                sh "${MVN_BIB} test"
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports-bibliographic/*.xml'
+                    publishHTML(target: [reportDir: 'target/site/jacoco-bibliographic', reportFiles: 'index.html',
+                                         reportName: 'JaCoCo (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+                    archiveArtifacts artifacts: 'target/surefire-reports-bibliographic/**,target/site/jacoco-bibliographic/**,target/jacoco-bibliographic.exec', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Static analysis') {
             steps {
                 sh "${MVN} spotbugs:spotbugs"
@@ -66,6 +82,20 @@ pipeline {
                 always {
                     publishHTML(target: [reportDir: 'target/pit-reports', reportFiles: 'index.html',
                                          reportName: 'PIT (lending)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+                }
+            }
+        }
+
+        stage('Bibliographic mutation testing') {
+            when { expression { params.RUN_MUTATION } }
+            steps {
+                sh "${MVN_BIB} test-compile org.pitest:pitest-maven:mutationCoverage"
+            }
+            post {
+                always {
+                    publishHTML(target: [reportDir: 'target/pit-reports-bibliographic', reportFiles: 'index.html',
+                                         reportName: 'PIT (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+                    archiveArtifacts artifacts: 'target/pit-reports-bibliographic/**', allowEmptyArchive: true
                 }
             }
         }

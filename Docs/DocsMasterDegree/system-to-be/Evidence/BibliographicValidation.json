@@ -1,0 +1,44 @@
+{
+  "date": "2026-10-28",
+  "full_regression": {
+    "tests": 570,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "package": "BUILD SUCCESS",
+    "bibliographic_cases_at_that_run": 41
+  },
+  "final_bibliographic_tests": {
+    "tests": 52,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "jacoco": {
+    "scope": "bibliographicmanagement packages only",
+    "lines_covered": 345,
+    "lines_total": 359,
+    "line_percent": 96.1,
+    "branches_covered": 191,
+    "branches_total": 238,
+    "branch_percent": 80.25
+  },
+  "pit": {
+    "classes": [
+      "BibliographicMerge",
+      "SourceSelection",
+      "AuthorCorrespondence"
+    ],
+    "generated": 38,
+    "killed": 38,
+    "survived": 0,
+    "no_coverage": 0
+  },
+  "live_http_check": {
+    "isbn": "9780132350884",
+    "google_books": 429,
+    "open_library": 200,
+    "end_to_end_live_registration": false
+  },
+  "deployed_to_azure": false
+}

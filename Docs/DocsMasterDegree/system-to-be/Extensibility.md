@@ -1,6 +1,6 @@
 # ADD — Extensibility
 
-Status: lending policies (iteration 3) are implemented and verified by tests and an extension experiment; bibliographic sources (iteration 1) and notifications (iteration 2) are designed; neither is implemented or verified.
+For bibliographic implementation, see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
 Requirements and scenarios: [ADD.md](ADD.md). Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. The detailed rationale is recorded in the linked technical memo.
 
@@ -103,7 +103,7 @@ Question: where should provider communication and response mapping be placed so 
 
 ### Selected alternative — B
 
-Alternative B is the proposed solution because limited-impact source addition is the primary driver (QAS1). A new source implements the common contract and supplies its own communication/mapping; clients should not need new provider-specific conditions. The same boundary supports source selection at setup (QAS4) and controlled tests (QAS9). We accept the additional types and contracts as the trade-off. The existing layered backend is retained; implementation and verification are pending.
+Alternative B is the implemented solution because limited-impact source addition is the primary driver (QAS1). A new source implements the common contract and supplies its own communication/mapping; clients should not need new provider-specific conditions. The same boundary supports source selection at setup (QAS4) and controlled tests (QAS9). We accept the additional types and contracts as the trade-off. The existing layered backend is retained; implementation and local evidence are recorded below.
 
 The tactics below explain how alternative B achieves these goals. They are complementary parts of that solution, not additional competing alternatives. Step 5 defines its elements and responsibilities; the technical memo records the detailed rationale.
 
@@ -272,7 +272,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | `LendingServiceImpl` (lending policies) | Obtain the history, select the policy, apply the decision and create or reject the lending. | Existing application service, changed once | QAS3, CON-LP-1 |
 | Setup composition (lending) | Bind the externally configured parameter values, build the validated parameter objects, and register the installed policies, the ordered rules and the `Clock`. | Spring configuration; adding a policy adds a registration and its parameter keys | QAS3, QAS7, CON-LP-2 |
 
-Names are proposed, not existing classes. Suggested placement: contract/data/coordinator in `bookmanagement.services` (optionally a bibliography subpackage), adapters/provider DTOs in `bookmanagement.infrastructure.bibliography`.
+Implemented classes are in `bibliographicmanagement.services`, `.infrastructure`, `.configuration`, `.api`, `.model` and `.repositories`; registration delegates to the existing book service.
 
 For notifications, the suggested placement is a notification package beside the lending module for the contract and the three implementations; mechanism clients stay inside the implementations (CON-NOT-5).
 
@@ -311,7 +311,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ![Bibliographic source structure](Images/BibliographicSourceStructure.png)
 
-**Confirmed behaviour:** data, source-order priority, list handling, conservative catalogue association and lookup/registration separation are specified in [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions); source outcomes are agreed in the testability memo. **Implementation details:** see the bibliographic memo for the remaining contracts and catalogue-association storage. Provider schemas/endpoints must be checked against official documentation when implementing. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
+**Confirmed behaviour:** data, source-order priority, list handling, conservative catalogue association and lookup/registration separation are specified in [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions); source outcomes are agreed in the testability memo. **Implementation details:** contracts, source documentation and correspondence storage are recorded in [the implementation report](BibliographicImplementation.md). This sequence shows lookup and catalogue resolution, not book persistence. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
 
 ### Sequence sketch — Notification methods information
 
@@ -351,22 +351,20 @@ Shows where the policy package sits between `LendingController`, `LendingService
 
 ### Design Kanban
 
-This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. Only lending policy extensibility (QAS3) is marked addressed, because it is also implemented and was checked with an extension experiment; the other drivers have no implementation or verification yet.
+This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. Bibliographic extensibility (QAS1) is addressed with implemented contracts and a controlled third-source experiment. Lending evidence remains described below; notification status is unchanged.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
+| | | Bibliographic source extensibility — QAS1: implemented interface/adapters and merge; fake third-source collaboration passes without coordinator changes |
 |  | Notification extensibility — QAS2: common contract, three implementations and setup composition proposed; failure behaviour, check schedule and extension impact still need refinement/validation |  |
 | | | Lending policy extensibility — QAS3: policy contract, selector, history snapshot and renewal implemented; adding a third policy touched one setup class, one properties file and new files only (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
-
-- **Iteration goal:** structurally supported by a common source interface and provider adapters (QAS1). Adding a source should require its adapter, registration and tests, while preserving existing adapters and coordinator logic. This remains to be verified.
-- **Trade-off:** additional contracts, mapping and merge responsibilities reduce coupling but increase the initial design and maintenance effort.
-- **Risks:** a provider may need fields or outcomes absent from `BibliographicData`; changing that shared contract can affect consumers and merge rules.
-- **Extension experiment:** add a third fake source and its registration, then enable it through setup configuration. Record changed files and check that the coordinator, existing adapters and book business logic remain unchanged for this example.
-- **Representative tests:** check partial metadata and source outcomes with controlled responses; test merge separately and run relevant registration regression tests (QAS9). See [Testability.md](Testability.md).
-- **Remaining work:** finalize lookup/registration contracts, confirmed author correspondence storage and exact comparison rules; agreed merge and failure behaviour guides implementation. [Configurability.md](Configurability.md) refines source selection; implementation supplies extension-impact evidence later.
-
+- **Goal:** Implemented source contract, adapters, normalized data and separate merge support limited-impact source additions.
+- **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
+- **Verification:** The third fake-source experiment exercises real selection/coordinator/merge without changing existing production providers or coordinator; disabled sources receive no calls.
+- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 ### Analysis — Iteration 2
 
 - **Iteration goal:** structurally supported by a common notification contract and one implementation per mechanism (QAS2). Adding a channel should require its implementation, registration and tests, while `LendingServiceImpl` and the existing channels remain unchanged. This remains to be verified.

@@ -1,6 +1,6 @@
 # Technical Memo — EXT-BIB-01: Bibliographic source extensibility
 
-Status: proposed architecture; not implemented or verified.
+To see the implementation: [implemented contracts and verification](../../BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Extensibility, iteration 1](../../Extensibility.md). Drivers: US4/QAS1, with US1/US3, US5/QAS4 and QAS9. Faculty basis: Project 1 section 1.3.3.1 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
 
@@ -34,13 +34,13 @@ Supporting concepts selected in Step 4: Adapter and Data Transformation (interop
 
 ## Solution
 
-EXT-BIB-01 (proposed): `BibliographicSource` defines ISBN lookup; Google/Open Library adapters normalize responses into `BibliographicData`; `BibliographicService` coordinates the selected sources; isolated merge logic combines results. Source outcomes distinguish no match from communication failure.
+EXT-BIB-01 (implemented): `BibliographicSource` defines ISBN lookup; Google/Open Library adapters normalize responses into `BibliographicData`; `BibliographicService` coordinates the selected sources; isolated merge logic combines results. Source outcomes distinguish no match from communication failure.
 
 EXT-BIB-02 (agreed with the group): associate existing authors/genre automatically only when matching is unambiguous under defined rules. The librarian completes missing/ambiguous data and explicitly creates missing catalogue records when appropriate. Retrieval itself creates no authors/genres.
 
-EXT-BIB-03 (proposed): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Apply the [confirmed merge and catalogue rules](../../ADD.md#bibliographic-behaviour--confirmed-decisions).
+EXT-BIB-03 (implemented): isolate normalized partial metadata and deterministic merge from HTTP and persistence. Apply the [confirmed merge and catalogue rules](../../ADD.md#bibliographic-behaviour--confirmed-decisions).
 
-EXT-BIB-04 (proposed): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; the startup composition proposal is detailed in [Configurability.md](../../Configurability.md), with external loading and precedence still pending.
+EXT-BIB-04 (implemented): compose the ordered enabled source collection at setup and inject it into the coordinator. Configuration, partial-result composition and test isolation belong to roadmap iteration 1; the startup composition proposal is detailed in [Configurability.md](../../Configurability.md), using standard Spring external-file loading and override precedence.
 
 ### Lookup outcomes — Confirmed behaviour
 
@@ -55,15 +55,8 @@ New providers can implement the same contract without provider-specific branches
 ## Alternatives
 
 - **Alternative A — Direct provider integration in the book service:** provider calls, mapping and conditions inside `BookServiceImpl`. Less initial structure, but each new source changes service logic and couples its tests to external formats.
-- **Alternative B — Common interface, provider adapters and a coordinator (selected proposal):** `BibliographicSource`, one adapter per provider and `BibliographicService` coordinating through the contract. Isolates variation and supports QAS1/QAS9 while allowing QAS4 composition, at the cost of more types and maintained contracts.
-
-## Pending issues
-
-- Final API and Java contracts and missing-data response representation; representation/storage of previously confirmed author correspondences.
-- Representation of librarian corrections and precise text-normalization rules for comparing provider values.
-- Provider-specific invalid-response criteria and the REST representation of the confirmed lookup outcomes and warnings.
-- Actual extension impact and regression results after implementation.
+- **Alternative B — Common interface, provider adapters and a coordinator (selected and implemented):** `BibliographicSource`, one adapter per provider and `BibliographicService` coordinating through the contract. Isolates variation and supports QAS1/QAS9 while allowing QAS4 composition, at the cost of more types and maintained contracts.
 
 ## Verification
 
-Follow Step 7 of the linked iteration: mapping fixtures, coordinator/merge tests, catalogue invariant checks and a third fake-source extension experiment. No passing results or effort measurements are claimed yet.
+52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../BibliographicImplementation.md).

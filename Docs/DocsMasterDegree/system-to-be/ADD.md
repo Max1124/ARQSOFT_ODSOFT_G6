@@ -1,14 +1,16 @@
 # ADD
 
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+
 This file details the ADD process used to develop new functionalities.
 
 ## Design iterations
 
-- [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; only its proposed design is detailed so far. Not yet implemented.
+- [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; its bibliographic design is implemented and locally verified, as recorded in the implementation report.
 
 - [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1), notifications (iteration 2) and lending policies (iteration 3). Notification testing is designed; no notification test implementation is claimed.
 
-- [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Not yet implemented.
+- [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Bibliographic startup selection is implemented and tested; deployment validation remains separate.
 
 ## Requirements
 Below are listed the non-functional and functional requirements
@@ -39,7 +41,7 @@ Below are listed the non-functional and functional requirements
 ### Functional requirements
 #### Bibliographic information
 - US1: As a Librarian, I want to create a book using its ISBN, so that the system retrieves and fills in the available bibliographic information from the configured external sources, reducing manual entry.
-- US2: As a Librarian, I want to search for a book's bibliographic information by ISBN or title in the external sources, before registering it in the library catalogue.
+- US2: As a Librarian, I want to search for a book's bibliographic information by ISBN in the external sources, before registering it in the library catalogue.
 - US3: As a Librarian, I want the system to combine the data returned by several external sources into a single book record when more than one source is configured, filling missing fields from whichever source provides them.
 - US4: As a Librarian, I want to be able to add more new bibliographic information sources.
 - US5: As an Administrator, I want to define at setup time which bibliographic information sources are enabled, without changing the source code.
@@ -72,8 +74,7 @@ Below are listed the non-functional and functional requirements
 - **Workflow:** separate lookup without persistence from ISBN-based registration. Register directly only when mandatory data and catalogue associations are resolved; otherwise return the retrieved information and completion needs without saving an incomplete book. The librarian can correct the proposed data.
 - **Configuration:** read an external ordered source list at startup; invalid configuration prevents startup and changes take effect after restart. Provider communication remains behind `BibliographicTransport` with a defined timeout.
 
-These behavioural decisions are confirmed. Implementation details remain to be specified: Java/REST contracts, storage of previously confirmed author correspondences, external configuration loading and HTTP client settings. Search by title remains proposed scope.
-
+These behavioural decisions are implemented. Java/REST contracts, confirmed author correspondence storage, external configuration loading and HTTP client settings are documented in [the implementation report](BibliographicImplementation.md). Search by title is a future enhancement, outside the current iteration.
 
 ### Lending rules from the faculty specification
 Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 4 (automatic policy selection, brief 1.3.3.3 item 3) and section 5 (external setup-time parameter configuration, US10/QAS7).
@@ -95,8 +96,7 @@ Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lendin
 ### Scope and classification notes
 The existing non-functional section mixes required functional capabilities with quality requirements. Retrieving external data and sending notifications are functional; limited impact of additions is extensibility; setup-time selection is configurability. User stories refine these capabilities.
 
-Search by title (US2), merge behaviour (US3), specific notification events (US6/US7), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
-
+Search by title is future scope outside US2. Merge behaviour (US3), specific notification events (US6/US7), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
 
 ## Quality Attribute Scenarios
 The Library Management service does not adequately support **Extensibility**, **Configurability** and **Testability**. The following scenarios make these qualities concrete and measurable.
