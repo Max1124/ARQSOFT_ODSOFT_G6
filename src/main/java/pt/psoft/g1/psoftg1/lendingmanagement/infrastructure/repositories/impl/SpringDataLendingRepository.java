@@ -56,6 +56,12 @@ public interface SpringDataLendingRepository extends LendingRepository, LendingR
                 "AND l.returnedDate IS NULL")
     List<Lending> listOutstandingByReaderNumber(@Param("readerNumber") String readerNumber);
 
+    @Override
+    @Query("SELECT l " +
+            "FROM Lending l " +
+            "WHERE l.returnedDate IS NULL")
+    List<Lending> listOutstanding();
+
     // Both bounds inclusive: the selection rule counts a lending returned exactly on a boundary date.
     @Override
     @Query("SELECT l " +

@@ -1,6 +1,8 @@
 package pt.psoft.g1.psoftg1.lendingmanagement.services;
 
-import lombok.RequiredArgsConstructor;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
@@ -17,6 +19,10 @@ import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.LendingToRenew;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.PolicyDecision;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistory;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistoryProvider;
+import pt.psoft.g1.psoftg1.notificationmanagement.services.LendingNotification;
+import pt.psoft.g1.psoftg1.notificationmanagement.services.NotificationParameters;
+import pt.psoft.g1.psoftg1.notificationmanagement.services.NotificationService;
+import pt.psoft.g1.psoftg1.readermanagement.model.ReaderDetails;
 import pt.psoft.g1.psoftg1.readermanagement.repositories.ReaderRepository;
 import pt.psoft.g1.psoftg1.shared.services.Page;
 
@@ -26,10 +32,13 @@ import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 
 @Service
 @PropertySource({"classpath:config/library.properties"})
 public class LendingServiceImpl implements LendingService{
+    private static final Logger logger = LogManager.getLogger();
+
     private final LendingRepository lendingRepository;
     private final FineRepository fineRepository;
     private final BookRepository bookRepository;
@@ -38,6 +47,9 @@ public class LendingServiceImpl implements LendingService{
     private final ReaderLendingHistoryProvider historyProvider;
     private final LendingPolicySelector policySelector;
     private final int fineValuePerDayInCents;
+    // Only the channels enabled at setup are injected; the service never names a channel (EXT-NOT-03, CFG-NOT-01).
+    private final List<NotificationService> notificationChannels;
+    private final NotificationParameters notificationParameters;
 
     // Explicit constructor (was Lombok + @Value field): every dependency, including the fine value, is passed in,
     // so the service can be built with test doubles and no Spring context (QAS11, TST-LP-05).
@@ -48,7 +60,9 @@ public class LendingServiceImpl implements LendingService{
                               Clock clock,
                               ReaderLendingHistoryProvider historyProvider,
                               LendingPolicySelector policySelector,
-                              @Value("${fineValuePerDayInCents}") int fineValuePerDayInCents) {
+                              @Value("${fineValuePerDayInCents}") int fineValuePerDayInCents,
+                              @Qualifier("enabledNotificationChannels") List<NotificationService> notificationChannels,
+                              NotificationParameters notificationParameters) {
         this.lendingRepository = lendingRepository;
         this.fineRepository = fineRepository;
         this.bookRepository = bookRepository;
@@ -57,6 +71,8 @@ public class LendingServiceImpl implements LendingService{
         this.historyProvider = historyProvider;
         this.policySelector = policySelector;
         this.fineValuePerDayInCents = fineValuePerDayInCents;
+        this.notificationChannels = List.copyOf(notificationChannels);
+        this.notificationParameters = notificationParameters;
     }
 
     @Override
@@ -193,6 +209,47 @@ public class LendingServiceImpl implements LendingService{
                 startDate,
                 endDate);
 
+    }
+
+    // Run by the scheduler registered at setup (EXT-NOT-05), so the service reads no schedule property. Tests call it directly.
+    @Override
+    public void checkDueAndOverdueLendings() {
+        final LocalDate today = LocalDate.now(clock);
+        for (Lending lending : lendingRepository.listOutstanding()) {
+            buildNotificationIfDue(lending, today)
+                    .ifPresent(notification -> notifyReader(lending.getReaderDetails().getReaderNumber(), notification));
+        }
+    }
+
+    // Overdue (US7) on every check while overdue, so the reader sees the fine grow; due-date (US6) once, on the notice day.
+    private Optional<LendingNotification> buildNotificationIfDue(Lending lending, LocalDate today) {
+        final Optional<Integer> daysOverdue = lending.getDaysOverdue(today);
+        if (daysOverdue.isPresent()) {
+            return Optional.of(LendingNotification.overdue(lending.getLendingNumber(), lending.getTitle(),
+                    lending.getLimitDate(), daysOverdue.get(), lending.getFineValueInCents(today).orElseThrow()));
+        }
+        return lending.getDaysUntilReturn(today)
+                .filter(days -> days == notificationParameters.dueDateNoticeDays())
+                .map(days -> LendingNotification.dueDateApproaching(lending.getLendingNumber(), lending.getTitle(),
+                        lending.getLimitDate()));
+    }
+
+    // Dispatch through the intersection of enabled and chosen channels (CFG-NOT-03), read at each check (QAS6).
+    private void notifyReader(String readerNumber, LendingNotification notification) {
+        final Set<String> chosen = readerRepository.findByReaderNumber(readerNumber)
+                .map(ReaderDetails::getNotificationChannels)
+                .orElse(Set.of());
+        for (NotificationService channel : notificationChannels) {
+            if (chosen.contains(channel.channel())) {
+                // A failing channel is logged; the other channels and readers are still notified (group decision).
+                try {
+                    channel.send(readerNumber, notification);
+                } catch (RuntimeException e) {
+                    logger.warn("Notification of lending {} through channel '{}' failed",
+                            notification.lendingNumber(), channel.channel(), e);
+                }
+            }
+        }
     }
 
 

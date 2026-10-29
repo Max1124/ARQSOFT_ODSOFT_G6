@@ -12,6 +12,8 @@ public interface LendingRepository {
     List<Lending> listByReaderNumberAndIsbn(String readerNumber, String isbn);
     int getCountFromCurrentYear();
     List<Lending> listOutstandingByReaderNumber(String readerNumber);
+    // All lendings not yet returned, read by the periodic due-date and overdue check (EXT-NOT-05).
+    List<Lending> listOutstanding();
     // Dates are parameters, not CURRENT_DATE, so the history window can be tested at fixed days (QAS11, EXT-LP-04).
     List<Lending> listReturnedByReaderNumberBetween(String readerNumber, LocalDate from, LocalDate to);
     Double getAverageDuration();

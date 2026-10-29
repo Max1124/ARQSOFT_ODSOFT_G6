@@ -11,7 +11,10 @@ import pt.psoft.g1.psoftg1.shared.model.EntityWithPhoto;
 import pt.psoft.g1.psoftg1.usermanagement.model.Reader;
 
 import java.nio.file.InvalidPathException;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 @Entity
 @Table(name = "READER_DETAILS")
@@ -57,6 +60,17 @@ public class ReaderDetails extends EntityWithPhoto {
     @Setter
     @ManyToMany
     private List<Genre> interestList;
+
+    // Channels chosen by the reader (CFG-NOT-02); checked against the enabled set by NotificationPreferenceService.
+    // Empty until the reader chooses, so such a reader receives no notifications.
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "READER_NOTIFICATION_CHANNELS")
+    @Column(name = "CHANNEL")
+    private Set<String> notificationChannels = new HashSet<>();
+
+    // Target of the webhook channel, provided by the reader; null until the reader provides one.
+    @Embedded
+    private WebhookUrl notificationWebhookUrl;
 
     public ReaderDetails(int readerNumber, Reader reader, String birthDate, String phoneNumber, boolean gdpr, boolean marketing, boolean thirdParty, String photoURI, List<Genre> interestList) {
         if(reader == null || phoneNumber == null) {
@@ -163,6 +177,32 @@ public class ReaderDetails extends EntityWithPhoto {
     }
 
     public String getPhoneNumber() { return this.phoneNumber.toString();}
+
+    public Set<String> getNotificationChannels() {
+        return Set.copyOf(this.notificationChannels);
+    }
+
+    /**
+     * Replaces the chosen notification channels. Whether each channel is enabled is an application rule,
+     * checked before this call; the entity only guards that a choice has at least one channel.
+     */
+    public void chooseNotificationChannels(final Set<String> channels) {
+        if (channels == null || channels.isEmpty()) {
+            throw new IllegalArgumentException("At least one notification channel must be chosen");
+        }
+        // Cleared and refilled, so the ORM keeps managing the same collection.
+        this.notificationChannels.clear();
+        this.notificationChannels.addAll(channels);
+    }
+
+    public Optional<String> getNotificationWebhookUrl() {
+        return Optional.ofNullable(this.notificationWebhookUrl).map(WebhookUrl::toString);
+    }
+
+    /** Replaces the webhook URL; an invalid URL is rejected and the previous one is kept. */
+    public void defineNotificationWebhookUrl(final String url) {
+        this.notificationWebhookUrl = new WebhookUrl(url);
+    }
 
     protected ReaderDetails() {
         // for ORM only

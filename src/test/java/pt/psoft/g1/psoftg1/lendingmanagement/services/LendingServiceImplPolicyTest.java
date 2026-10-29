@@ -19,6 +19,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.PolicyDecision;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistory;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.ReaderLendingHistoryProvider;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.RejectionReason;
+import pt.psoft.g1.psoftg1.notificationmanagement.services.NotificationParameters;
 import pt.psoft.g1.psoftg1.readermanagement.model.ReaderDetails;
 import pt.psoft.g1.psoftg1.readermanagement.repositories.ReaderRepository;
 import pt.psoft.g1.psoftg1.usermanagement.model.Reader;
@@ -67,7 +68,7 @@ class LendingServiceImplPolicyTest {
     @BeforeEach
     void wire() {
         service = new LendingServiceImpl(lendingRepository, fineRepository, bookRepository, readerRepository,
-                clock, historyProvider, selector, 200);
+                clock, historyProvider, selector, 200, List.of(), new NotificationParameters(3));
         when(historyProvider.historyOf(READER_NUMBER)).thenReturn(HISTORY);
         when(selector.select(HISTORY)).thenReturn(chosenPolicy);
         when(bookRepository.findByIsbn("9782826012092")).thenReturn(Optional.of(book));

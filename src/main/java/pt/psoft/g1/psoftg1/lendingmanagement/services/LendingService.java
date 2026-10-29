@@ -27,6 +27,8 @@ public interface LendingService {
     List<Lending> getOverdue(Page page);
     Double getAvgLendingDurationByIsbn(String isbn);
     List<Lending> searchLendings(Page page, SearchLendingQuery request);
+    // Periodic check: notifies readers of lendings near their due date (US6) or overdue with a fine (US7).
+    void checkDueAndOverdueLendings();
 
 
 }
