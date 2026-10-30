@@ -1,0 +1,161 @@
+def areas
+// Pipeline 3 (release): job lms-pipeline on the Azure Jenkins, fired by a push or a merged pull request on main. Same checks, then uat (+ Newman), then prod.
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+    }
+
+    // Fires on the GitHub webhook; the VM is usually off, so a missed push is rebuilt with "Build Now".
+    triggers {
+        githubPush()
+    }
+
+    parameters {
+        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending, bibliographic and notification classes (slow)')
+        booleanParam(name: 'AUTO_PROD', defaultValue: false, description: 'Deploy to prod right after uat without asking (default: wait for a manual approval)')
+    }
+
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        // One Maven profile per student: -Plending (Guilherme), -Pbibliographic (Max1124), -Pnotification (AlexandreMouraCosta).
+        MVN = './mvnw -B -Plending'
+        MVN_BIB = './mvnw -B -Pbibliographic'
+        MVN_NOT = './mvnw -B -Pnotification'
+        JAR = 'target/psoft-g1-0.0.1-SNAPSHOT.jar'
+    }
+
+    stages {
+        stage('Check Java') {
+            steps {
+                sh 'java -version'
+                sh 'chmod +x mvnw deploy/deploy.sh'
+                // The per-student steps live in jenkins/areas.groovy, shared by the three pipelines.
+                script { areas = load 'jenkins/areas.groovy' }
+            }
+        }
+
+        // One build produces the jar. The area stages below test it; deploy stages only run if every area passed.
+        stage('Build and package') {
+            steps {
+                sh "${MVN} clean package -DskipTests"
+            }
+        }
+
+        stage('Lending policies (Guilherme)') {
+            stages {
+                stage('Lending: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingTests() }
+                        }
+                    }
+                }
+                stage('Lending: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingStaticAnalysis() }
+                        }
+                    }
+                }
+                stage('Lending: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Bibliographic sources (Max1124)') {
+            stages {
+                stage('Bibliographic: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Reader notifications (AlexandreMouraCosta)') {
+            stages {
+                stage('Notifications: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationTests() }
+                        }
+                    }
+                }
+                stage('Notifications: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Archive artifact') {
+            when { expression { currentBuild.currentResult == 'SUCCESS' } }
+            steps {
+                archiveArtifacts artifacts: "${JAR}", fingerprint: true
+            }
+        }
+
+        stage('Deploy to uat') {
+            when { expression { currentBuild.currentResult == 'SUCCESS' } }
+            steps {
+                sh "deploy/deploy.sh uat ${JAR}"
+                // Reported as unstable, not failed, until the collection is known to pass on a clean database.
+                catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                    sh 'npx --yes newman run Docs/Psoft-G1.postman_collection.json -e Docs/Psoft-G1.postman_environment.json --env-var host=http://localhost:8082 --reporters cli,junit --reporter-junit-export target/newman.xml'
+                }
+            }
+            post {
+                always {
+                    junit testResults: 'target/newman.xml', allowEmptyResults: true
+                }
+            }
+        }
+
+        // A failed area or a failed uat deploy stops the pipeline here. An unstable Newman run does not.
+        stage('Approve prod') {
+            agent none
+            when {
+                expression { currentBuild.currentResult != 'FAILURE' && !params.AUTO_PROD }
+            }
+            steps {
+                timeout(time: 1, unit: 'HOURS') {
+                    input message: "Deploy build #${env.BUILD_NUMBER} to prod?", ok: 'Deploy'
+                }
+            }
+        }
+
+        stage('Deploy to prod') {
+            when {
+                expression { currentBuild.currentResult != 'FAILURE' }
+            }
+            steps {
+                sh "deploy/deploy.sh prod ${JAR}"
+            }
+        }
+    }
+}

@@ -1,0 +1,111 @@
+def areas
+// Pipeline 1 (local): runs on the developer's own Jenkins after every local commit (git post-commit hook). Builds and tests only; nothing is deployed.
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+    }
+
+    parameters {
+        booleanParam(name: 'RUN_MUTATION', defaultValue: false, description: 'Run PIT on the lending, bibliographic and notification classes (slow)')
+        string(name: 'JAVA_HOME_17', defaultValue: '/usr/lib/jvm/java-17-openjdk-amd64', description: 'JDK 17 on this machine (Lombok 1.18.30 does not compile on newer JDKs)')
+    }
+
+    environment {
+        JAVA_HOME = "${params.JAVA_HOME_17}"
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        // One Maven profile per student: -Plending (Guilherme), -Pbibliographic (Max1124), -Pnotification (AlexandreMouraCosta).
+        MVN = './mvnw -B -Plending'
+        MVN_BIB = './mvnw -B -Pbibliographic'
+        MVN_NOT = './mvnw -B -Pnotification'
+        JAR = 'target/psoft-g1-0.0.1-SNAPSHOT.jar'
+    }
+
+    stages {
+        stage('Check Java') {
+            steps {
+                sh 'java -version'
+                sh 'chmod +x mvnw deploy/deploy.sh'
+                // The per-student steps live in jenkins/areas.groovy, shared by the three pipelines.
+                script { areas = load 'jenkins/areas.groovy' }
+            }
+        }
+
+        // One build produces the jar. The area stages below test it; deploy stages only run if every area passed.
+        stage('Build and package') {
+            steps {
+                sh "${MVN} clean package -DskipTests"
+            }
+        }
+
+        stage('Lending policies (Guilherme)') {
+            stages {
+                stage('Lending: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingTests() }
+                        }
+                    }
+                }
+                stage('Lending: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingStaticAnalysis() }
+                        }
+                    }
+                }
+                stage('Lending: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Bibliographic sources (Max1124)') {
+            stages {
+                stage('Bibliographic: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Reader notifications (AlexandreMouraCosta)') {
+            stages {
+                stage('Notifications: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationTests() }
+                        }
+                    }
+                }
+                stage('Notifications: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationMutation() }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

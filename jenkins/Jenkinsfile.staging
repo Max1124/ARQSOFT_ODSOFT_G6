@@ -1,0 +1,124 @@
+def areas
+// Pipeline 2 (staging): Multibranch job on the Azure Jenkins for the branches feature/*. Same checks as the local pipeline, then deploys the jar to dev (8081).
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '20'))
+        disableConcurrentBuilds()
+        timeout(time: 45, unit: 'MINUTES')
+    }
+
+    parameters {
+        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending, bibliographic and notification classes (slow)')
+    }
+
+    environment {
+        JAVA_HOME = '/usr/lib/jvm/java-17-openjdk-amd64'
+        PATH = "${JAVA_HOME}/bin:${env.PATH}"
+        // One Maven profile per student: -Plending (Guilherme), -Pbibliographic (Max1124), -Pnotification (AlexandreMouraCosta).
+        MVN = './mvnw -B -Plending'
+        MVN_BIB = './mvnw -B -Pbibliographic'
+        MVN_NOT = './mvnw -B -Pnotification'
+        JAR = 'target/psoft-g1-0.0.1-SNAPSHOT.jar'
+    }
+
+    stages {
+        stage('Check Java') {
+            steps {
+                sh 'java -version'
+                sh 'chmod +x mvnw deploy/deploy.sh'
+                // The per-student steps live in jenkins/areas.groovy, shared by the three pipelines.
+                script { areas = load 'jenkins/areas.groovy' }
+            }
+        }
+
+        // One build produces the jar. The area stages below test it; deploy stages only run if every area passed.
+        stage('Build and package') {
+            steps {
+                sh "${MVN} clean package -DskipTests"
+            }
+        }
+
+        stage('Lending policies (Guilherme)') {
+            stages {
+                stage('Lending: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingTests() }
+                        }
+                    }
+                }
+                stage('Lending: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingStaticAnalysis() }
+                        }
+                    }
+                }
+                stage('Lending: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Bibliographic sources (Max1124)') {
+            stages {
+                stage('Bibliographic: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Reader notifications (AlexandreMouraCosta)') {
+            stages {
+                stage('Notifications: tests and coverage') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationTests() }
+                        }
+                    }
+                }
+                stage('Notifications: mutation testing') {
+                    when { expression { params.RUN_MUTATION } }
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationMutation() }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Archive artifact') {
+            when { expression { currentBuild.currentResult == 'SUCCESS' } }
+            steps {
+                archiveArtifacts artifacts: "${JAR}", fingerprint: true
+            }
+        }
+
+        stage('Deploy to dev') {
+            when { expression { currentBuild.currentResult == 'SUCCESS' } }
+            steps {
+                sh "deploy/deploy.sh dev ${JAR}"
+            }
+        }
+    }
+}

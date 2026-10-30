@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# Pipeline 1 trigger: after every local commit, ask the local Jenkins to build the committed branch.
+# Never blocks the commit: if Jenkins is not running it only prints a warning.
+# Settings (export them in your shell profile): JENKINS_URL, JENKINS_USER, JENKINS_API_TOKEN, LMS_LOCAL_JOB, LMS_LOCAL_TOKEN.
+
+url="${JENKINS_URL:-http://localhost:8080}"
+job="${LMS_LOCAL_JOB:-lms-local}"
+token="${LMS_LOCAL_TOKEN:-lms-local}"
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+auth=()
+if [ -n "${JENKINS_USER:-}" ] && [ -n "${JENKINS_API_TOKEN:-}" ]; then
+  auth=(-u "${JENKINS_USER}:${JENKINS_API_TOKEN}")
+fi
+
+if curl -fsS -m 5 -X POST "${auth[@]}" "${url}/job/${job}/buildWithParameters?token=${token}&BRANCH=${branch}" >/dev/null 2>&1; then
+  echo "post-commit: local pipeline started for ${branch} (${url}/job/${job}/)"
+else
+  echo "post-commit: could not reach the local Jenkins at ${url}; no build started" >&2
+fi
+exit 0
