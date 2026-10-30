@@ -20,9 +20,9 @@ for env in "${!PORTS[@]}"; do
   cat > "/etc/lms/${env}.env" <<EOF
 SERVER_PORT=${PORTS[$env]}
 SPRING_PROFILES_ACTIVE=${env},bootstrap
-# No SMS gateway or SMTP server on the VM: keep SMS off (its credentials are mandatory when enabled) and the daily check disabled.
-NOTIFICATION_CHANNELS=email,webhook
-NOTIFICATION_CHECK_CRON=-
+NOTIFICATION_SMS_GATEWAY_URL=http://193.136.56.49:8080/message
+NOTIFICATION_SMS_USERNAME=sms
+NOTIFICATION_SMS_PASSWORD=7wGimSzn
 EOF
 done
 
