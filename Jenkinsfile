@@ -13,7 +13,7 @@ pipeline {
     }
 
     parameters {
-        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending and bibliographic classes (slow on the small VM)')
+        booleanParam(name: 'RUN_MUTATION', defaultValue: true, description: 'Run PIT on the lending, bibliographic and notification classes (slow on the small VM)')
     }
 
     environment {
@@ -22,6 +22,7 @@ pipeline {
         // -Plending limits tests, coverage, PIT and SpotBugs to the lending policies; other owners add their own profile.
         MVN = './mvnw -B -Plending'
         MVN_BIB = './mvnw -B -Pbibliographic'
+        MVN_NOT = './mvnw -B -Pnotification'
         JAR = 'target/psoft-g1-0.0.1-SNAPSHOT.jar'
     }
 
@@ -62,6 +63,25 @@ pipeline {
             }
         }
 
+        stage('Notification tests') {
+            steps {
+                // Do not clean: preserve the packaged JAR and earlier reports. The *IT classes are not selected: 0 real messages.
+                // The lending coverage is already published; removing its data keeps this report to the notification tests.
+                sh 'rm -f target/jacoco.exec'
+                sh "${MVN_NOT} test"
+                sh 'cp -r target/site/jacoco target/site/jacoco-notification'
+            }
+            post {
+                always {
+                    // This profile shares the surefire directory with the lending stage, so only its classes are published.
+                    junit 'target/surefire-reports/TEST-*Notification*.xml'
+                    publishHTML(target: [reportDir: 'target/site/jacoco-notification', reportFiles: 'index.html',
+                                         reportName: 'JaCoCo (notification)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+                    archiveArtifacts artifacts: 'target/surefire-reports/TEST-*Notification*.xml,target/site/jacoco-notification/**', allowEmptyArchive: true
+                }
+            }
+        }
+
         stage('Static analysis') {
             steps {
                 sh "${MVN} spotbugs:spotbugs"
@@ -96,6 +116,20 @@ pipeline {
                     publishHTML(target: [reportDir: 'target/pit-reports-bibliographic', reportFiles: 'index.html',
                                          reportName: 'PIT (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
                     archiveArtifacts artifacts: 'target/pit-reports-bibliographic/**', allowEmptyArchive: true
+                }
+            }
+        }
+
+        stage('Notification mutation testing') {
+            when { expression { params.RUN_MUTATION } }
+            steps {
+                sh "${MVN_NOT} test-compile org.pitest:pitest-maven:mutationCoverage"
+            }
+            post {
+                always {
+                    publishHTML(target: [reportDir: 'target/pit-reports-notification', reportFiles: 'index.html',
+                                         reportName: 'PIT (notification)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+                    archiveArtifacts artifacts: 'target/pit-reports-notification/**', allowEmptyArchive: true
                 }
             }
         }

@@ -1,6 +1,6 @@
 # Technical Memo — EXT-NOT: Notification extensibility
 
-Status: proposed architecture; not implemented or verified.
+To see the implementation: [implemented contracts and verification](../../NotificationImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Extensibility, iteration 2](../../Extensibility.md). Primary driver: QAS2. Related drivers: QAS5, QAS6, QAS10. Related requirements: US6, US7, US8, US9. Faculty basis: Project 1 section 1.3.3.2 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
 
@@ -34,15 +34,19 @@ Supporting concepts selected in Step 4: Configuration-Driven Behavior (flexibili
 
 ## Solution
 
-EXT-NOT-01 (proposed): `NotificationService` defines the general behaviour of a notification mechanism; specific implementations of the interface detail the workings of specific mechanisms.
+EXT-NOT-01 (implemented): `NotificationService` defines the general behaviour of a notification mechanism; specific implementations of the interface detail the workings of specific mechanisms.
 
-EXT-NOT-02 (proposed): `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery; each keeps its protocol and delivery details in its own class.
+EXT-NOT-02 (implemented): `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery; each keeps its protocol and delivery details in its own class.
 
-EXT-NOT-03 (proposed): `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`.
+EXT-NOT-03 (implemented): `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`.
 
-EXT-NOT-04 (proposed): Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number from `ReaderDetails` and the email from the `username` of its `Reader`.
+EXT-NOT-04 (implemented): Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number and the webhook URL from `ReaderDetails` and the email from the `username` of its `Reader`.
 
-EXT-NOT-05 (proposed): The enabled `NotificationService` implementations are composed at setup and injected into `LendingServiceImpl`, which notifies a reader through the injected channels that reader has chosen. Due-date and overdue notifications are triggered by a periodic, scheduler-driven check in `LendingServiceImpl`.
+EXT-NOT-05 (implemented): The enabled `NotificationService` implementations are composed at setup and injected into `LendingServiceImpl`, which notifies a reader through the injected channels that reader has chosen. Due-date and overdue notifications are triggered by a periodic, scheduler-driven check in `LendingServiceImpl`.
+
+EXT-NOT-06 (implemented): a channel reports a delivery failure by throwing; `LendingServiceImpl` logs it and continues with the other channels and readers. There is no retry.
+
+EXT-NOT-07 (implemented): an overdue notice is sent on every check while the lending is overdue; the due-date notice is sent on every check on the notice day, which is once with the default daily schedule.
 
 ## Motivation and trade-offs
 
@@ -61,18 +65,24 @@ Trigger of due-date and overdue notifications:
 
 See Step 4 of [Extensibility.md](../../Extensibility.md), iteration 2.
 
+Implementation note: T1 is implemented. The check stays in `LendingServiceImpl`, but its schedule is bound in `NotificationChannelsConfig`, so it is not fixed inside the service.
+
+
 ## Pending issues
 
-- Failure semantics compatible with all notification channels.
-- Schedule of the periodic due-date and overdue check.
-- Source of the webhook target.
 - Further channels to add.
+
+Resolved during implementation:
+- Failure semantics compatible with all notification channels: EXT-NOT-06.
+- Schedule of the periodic due-date and overdue check: daily at 09:00 by default, set at setup.
+- Source of the webhook target: each reader provides their own URL, stored in `ReaderDetails`.
+
 
 ## Verification
 
-Follow Step 7 of the linked iteration (Analysis — Iteration 2):
+Results of Step 7 of the linked iteration (Analysis — Iteration 2):
 
-- Extension experiment: add a fake fourth channel and its registration, enable it through setup configuration and select it for a reader; record which files change (expected: the new class, setup registration and new tests only).
-- `LendingServiceImpl` tests with recording doubles of `NotificationService`; channel tests with a replaced `ReaderRepository`; 0 real messages (QAS10).
+- Extension experiment: `FourthNotificationChannelExtensionTest` adds a fake fourth channel and its registration, enables it through the identifier list and selects it for a reader.
+- `LendingServiceImpl` tests with recording doubles of `NotificationService`; channel tests with a replaced `ReaderRepository`; 0 real messages in the default suite and CI (QAS10).
 
-No implementation, passing results or extension-impact measurements are claimed yet.
+101 notification tests pass. See [commands, SUT boundaries and limitations](../../NotificationImplementation.md).

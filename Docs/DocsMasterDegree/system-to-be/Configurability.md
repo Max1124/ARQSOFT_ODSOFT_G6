@@ -2,6 +2,8 @@
 
 Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
+Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
+
 Requirements and scenarios: [ADD.md](ADD.md). 
 Extensibility design this document builds on: [Extensibility.md](Extensibility.md). 
 Lending rules: *ARQSOFT 2026-2027 Lending Policies Specification v1.0*. 
@@ -31,7 +33,7 @@ The system must let the choice of bibliographic sources and notification channel
 | Iteration 2 | Let the Administrator choose, at setup, which notification channels are enabled, and let each reader choose among them at runtime. | QAS5, QAS6 — Configurability; US8, US9. Related: QAS2, QAS10 | Configuration-driven behaviour, channel registry, validation against the enabled set |
 | Iteration 3 | Configure the lending parameters at setup, and select the applicable lending policy for each reader automatically on every new lending or renewal. | QAS7, QAS8 — Configurability; US10, US11, US14. Related: US13, QAS3, QAS11 | Configuration-driven behaviour (parameters, selection rules), fail-fast validation, dynamic binding, selector, controlled clock |
 
-The roadmap is tentative: it orders architectural concerns, not coding stages. Design concepts are candidates to evaluate in each iteration. Each iteration closes the configuration point that the corresponding [Extensibility](Extensibility.md) iteration left open (EXT-BIB-04, EXT-NOT-01 to EXT-NOT-05, and the lending selector).
+The roadmap is tentative: it orders architectural concerns, not coding stages. Design concepts are candidates to evaluate in each iteration. Each iteration closes the configuration point that the corresponding [Extensibility](Extensibility.md) iteration left open (EXT-BIB-04, EXT-NOT-01 to EXT-NOT-07, and the lending selector).
 
 ### Iteration 1 — Bibliographic information
 
@@ -72,7 +74,7 @@ Selection rationale: section 5 makes every quantitative parameter a setup-time c
 
 As-is basis:
 
-- The original as-is had no source/channel configuration. Bibliographic source selection is now implemented; notification scope is unchanged (see [Extensibility.md](Extensibility.md)).
+- The original as-is had no source/channel configuration. Bibliographic source selection is now implemented, and so is notification channel selection (see [Extensibility.md](Extensibility.md)).
 - `LendingServiceImpl.create` applies a single fixed rule set to every reader (rejects when one lending is overdue, when three are outstanding — hardcoded — and uses `lendingDurationInDays` from `config/library.properties`). There is no policy, no per-reader selection and no renewal.
 - `Lending` obtains the current date with `LocalDate.now()`.
 
@@ -156,9 +158,10 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | CFG-BIB-01 | A setup property lists the enabled bibliographic sources by identifier, in order. At startup only the matching `BibliographicSource` implementations are injected into `BibliographicService`. | Enabling Open Library, Google Books or both needs no code change and no recompilation (QAS4); the coordinator contains no provider names (EXT-BIB-04). |
 | CFG-BIB-02 | Reject missing/empty source lists, unknown identifiers and duplicate identifiers at startup. Report the invalid selection clearly. | An unknown identifier is a setup error and must not silently reduce the sources consulted. |
 | CFG-BIB-03 | Supply source selection externally and preserve the configured order in an immutable selected collection for the running instance. | Changing selection needs a restart but no rebuild; stable order supports repeatable tests (QAS4, QAS9). Merge conflict rules remain separate. |
-| CFG-NOT-01 | A setup property lists the enabled notification channels by identifier. Only the matching `NotificationService` implementations are registered and injected into `LendingServiceImpl`; an unknown identifier stops startup. | Disabled channels send 0 notifications (QAS5); consistent with EXT-NOT-01 and EXT-NOT-02. |
+| CFG-NOT-01 | A setup property lists the enabled notification channels by identifier. Only the matching `NotificationService` implementations are registered and injected into `LendingServiceImpl`; an empty list, an unknown or repeated identifier, or a missing delivery setting of an enabled channel stops startup. | Disabled channels send 0 notifications (QAS5); consistent with EXT-NOT-01 and EXT-NOT-02. |
 | CFG-NOT-02 | Reader notification preferences are validated against the enabled set and stored per reader in `ReaderDetails`. A reader must choose at least one channel; an empty choice is rejected, and a choice that includes a disabled channel is rejected with an error naming the channel. | Readers can only select enabled channels, and other readers are unaffected (QAS6, US8). |
 | CFG-NOT-03 | Dispatch, in `LendingServiceImpl`, uses the intersection of enabled channels and the reader's chosen channels. | Later notifications follow the reader's current preference without restart (QAS6). |
+| CFG-NOT-04 | The schedule of the periodic check (daily at 09:00 by default) and the notice day (3 days before the limit date by default) are setup values, bound by the channel composition so `LendingServiceImpl` reads no property. The schedule can be disabled. A malformed schedule or a notice day that is not above 0 stops startup. | Each installation sets when readers are warned, without code changes, and invalid values are found at startup (US6, US7). |
 | CFG-LP-01 | `LendingPolicySelector` is invoked on every new lending and every renewal request and returns the applicable policy for that reader. No selection result is cached across requests. | LP-SEL2; selection reflects the reader's current history without restart or manual switching (QAS8). |
 | CFG-LP-02 | An ordered list of `PolicySelectionRule`s is assembled at setup; Standard is returned when none matches. `AdaptiveEligibilityRule` requires all three conditions: enough completed lendings, enough on-time returns, no currently overdue lending, within the history window (LP-SEL1). | Selection is data-driven by history and extensible by adding rules; Standard is an explicit default (spec 4.1). |
 | CFG-LP-03 | All quantitative parameters (Standard, Adaptive and selection: `HistoryPeriod`, `MinCompletedLendings`, `MinOnTimeRatio`) are read from setup properties at startup and bound into immutable parameter objects, one per policy plus one for selection (`StandardPolicyParameters`, `AdaptivePolicyParameters`, `PolicySelectionParameters`). Policies and rules receive the objects; they never read properties. | Specification 5.1–5.2: values change without source changes (QAS7, US10); policies stay free of Spring (CON-LP-4). |
@@ -192,15 +195,16 @@ These choices are elaborated as responsibilities and decisions in Step 5.
 | `LendingServiceImpl` | Ask the selector for the policy and delegate the decision; no policy names or limits. | Existing service (changed once, see Extensibility) | QAS3, QAS8 |
 | Lending parameter binding | Read the lending setup properties, build the validated parameter objects and fail startup on invalid values. | Spring configuration; setup-time binding | QAS7, CFG-LP-03, CFG-LP-05 |
 
-Names of the lending elements exist in `lendingmanagement.services.policy` and `configuration` (`LendingParametersConfig`, `LendingPoliciesConfig`); the bibliographic and notification names are proposed, not existing classes.
+Names of the lending elements exist in `lendingmanagement.services.policy` and `configuration` (`LendingParametersConfig`, `LendingPoliciesConfig`); the bibliographic names are proposed, not existing classes.
+Notification names are listed in `configuration` (`NotificationChannelsConfig`), `notificationmanagement.services` (`NotificationChannelComposition`, `NotificationParameters`) and `readermanagement.services` (`NotificationPreferenceService`).
 
 ### Connection of elements — Interface contracts
 
 | Boundary | Input | Output / obligation |
 |---|---|---|
 | Setup properties → source composition | Ordered source identifiers | Matching sources in order; invalid selection fails startup (CFG-BIB-02); changes apply after restart |
-| Setup properties → channel composition | List of channel identifiers | Exactly the matching implementations, injected into `LendingServiceImpl`; disabled channels are not loaded and send 0 notifications; an unknown identifier stops startup |
-| Reader preferences | Channels chosen by a reader | Stored if at least one channel is chosen and all are enabled; an empty choice is rejected; a disabled channel is rejected, naming the channel; other readers unaffected |
+| Setup properties → channel composition | List of channel identifiers | Exactly the matching implementations, injected into `LendingServiceImpl`; disabled channels are not loaded and send 0 notifications; an empty list, an unknown or repeated identifier, or a missing delivery setting of an enabled channel stops startup |
+| Reader preferences | Channels chosen by a reader and, optionally, their webhook URL, through `PUT /api/readers/notification-channels` (role READER) | Stored if at least one channel is chosen and all are enabled; an empty choice is rejected; a disabled channel is rejected, naming the channel; choosing the webhook channel requires a valid http or https URL; other readers unaffected |
 | Setup properties → lending parameter binding | Standard, Adaptive and selection parameter values | Validated immutable parameter objects; any constraint violation fails startup naming the parameter |
 | Selector | Reader identity and request time | Applicable policy for this request; Standard when no rule matches; no side effects on existing lendings |
 | Selection rule | Read-only history snapshot | Whether the reader qualifies; no repository, clock or Spring access |
@@ -232,7 +236,7 @@ The composition element connects external configuration to installed implementat
 
 ![Notification method configuration sequence](Images/NotificationMethodsConfigurationSequence.png)
 
-Selection is resolved once at startup. Invalid configuration stops initialization; valid configuration instantiates only the enabled channels and injects them into `LendingServiceImpl`.
+Selection is resolved once at startup. Invalid configuration stops initialization; valid configuration instantiates only the enabled channels and injects them into `LendingServiceImpl` and the reader preference validation.
 ### Structural sketch — Notification method boundary
 
 ![Notification method structure](Images/NotificationMethodsConfigurationStructure.png)
@@ -248,11 +252,9 @@ At startup the binding reads the lending properties and builds the three paramet
 
 **Pending decisions:**
 
-- Notification property names, file location and environment-variable precedence. Bibliographic settings and loading are specified in [the implementation report](BibliographicImplementation.md). Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
+- Bibliographic settings and loading are specified in [the implementation report](BibliographicImplementation.md). Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
 - Lending: the old `lendingDurationInDays` key was replaced by `lending.standard.lending-period-days`, and `MinOnTimeRatio` is a percentage (`lending.selection.min-on-time-ratio-percent`).
-- Bibliographic empty-list rejection is implemented; behaviour when no notification channel is enabled remains open.
-- Stored reader preferences that include a channel disabled at a later setup (for example a reader whose only chosen channel is no longer enabled).
-- Source of the webhook target.
+- Bibliographic empty-list rejection is implemented.
 
 ## Step 7 — Perform analysis of current design and review iteration goal and design objectives
 
@@ -263,8 +265,8 @@ This board evaluates the configurability drivers at design level. Not addressed 
 | Not addressed                                                                                                                                                                             | Partially addressed | Addressed in the design |
 |-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---|---|
 | | | Bibliographic source selection — QAS4: startup selection and validation implemented and tested; Azure configuration experiment remains separate |
-|                                                                                                                                                                                           | Notification channel selection and reader preferences — QAS5, QAS6: enabled set, validation and storage in `ReaderDetails` proposed; property format and failure behaviour still need refinement  | |
-|                                                                                                                                                                                           | | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup from `lending.*` keys, and a per-request selector, implemented and tested |
+| | | Notification channel selection and reader preferences — QAS5, QAS6: startup selection and validation, reader preference validation and storage in `ReaderDetails` implemented and tested |
+| | | Lending parameters and per-reader selection — QAS7, QAS8: validated parameter objects bound at startup from `lending.*` keys, and a per-request selector, implemented and tested |
 
 Related concerns: extension of sources, channels and policies (QAS1–QAS3) is in [Extensibility.md](Extensibility.md); test isolation (QAS9–QAS11) is detailed in [Testability.md](Testability.md).
 
@@ -278,7 +280,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
 
 ### Analysis and next verification — Iterations 2 and 3
 
-- **Iteration goals:** iteration 2 (channel composition) is structurally supported and not verified. Iteration 3 (parameter binding and per-request selection) is implemented and verified, see the lending verification below.
+- **Iteration goals:** iteration 2 (channel composition and reader preferences) is implemented and verified, see the notification verification below. Iteration 3 (parameter binding and per-request selection) is implemented and verified, see the lending verification below.
 - **Trade-off:** a composition element and fail-fast startup for setup choices; selection adds rule types and an explicit rule order. Changes to the enabled sources or channels need a restart, which matches the scenarios.
 - **Experiments:**
     - Enable each combination of channels (single, several) and confirm the effect after one restart with no code change.
@@ -287,6 +289,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
       - Change a reader's channels to include a disabled one and confirm rejection naming the channel; submit an empty choice and confirm rejection.
       - Request a lending and a renewal for readers with different histories and confirm each is evaluated with the policy its history selects.
 - **Representative tests:** disabled channels send 0 notifications; other readers' preferences are unaffected; each LP-SEL1 condition and its boundaries; a reader changes policy between two requests without restart. Use Arrange → Act → Assert, with a fixed clock for selection.
+- **Notification verification (2026-10-30):** `NotificationChannelCompositionTest` and `NotificationChannelsConfigTest` show that only the listed channels are created, and that an empty list, an unknown or repeated identifier, a missing delivery setting of an enabled channel, an invalid notice day or a malformed schedule stops startup (QAS5). `NotificationPreferenceServiceTest` and `NotificationApiComponentTest` show that an empty choice or a disabled channel is rejected, naming the channel, and that other readers are unaffected (QAS6). `LendingServiceImplNotificationTest` and `NotificationSystemTest` show that a reader is notified only through enabled and chosen channels, and that a changed choice applies to the next notification without restart. A restart with a changed value is covered at configuration level only; no whole-application restart experiment was run. See [the notification implementation report](NotificationImplementation.md).
 - **Lending verification (2026-10-23):** `LendingParametersConfigTest` binds the `lending.*` keys and shows that a missing, malformed or constraint-violating value stops startup naming the parameter (QAS7). `LendingPoliciesConfigTest` builds the composed selector from properties and shows that changing a selection value changes who qualifies with no code change. `AdaptiveEligibilityRuleTest` covers each LP-SEL1 condition and its boundaries. `LendingApiComponentTest` and `LendingSystemTest` show end to end that a reader with enough on-time returns gets the Adaptive period, one below the ratio or count stays on Standard, and the policy is evaluated again on every request (a place frees after a return). A restart with a changed value is covered at configuration level only; no whole-application restart experiment was run.
 
 ## Step 8 — Refine as necessary

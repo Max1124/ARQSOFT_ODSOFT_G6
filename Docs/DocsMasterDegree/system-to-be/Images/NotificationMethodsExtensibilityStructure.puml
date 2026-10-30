@@ -14,7 +14,8 @@ class SpringDataReaderRepositoryImpl
 
 class ReaderDetails {
   PhoneNumber phoneNumber
-  chosen notification channels (proposed)
+  chosen notification channels
+  WebhookUrl notificationWebhookUrl
 }
 class Reader {
   String username

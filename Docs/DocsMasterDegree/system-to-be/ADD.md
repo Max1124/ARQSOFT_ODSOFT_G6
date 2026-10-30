@@ -2,15 +2,17 @@
 
 Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
+Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
+
 This file details the ADD process used to develop new functionalities.
 
 ## Design iterations
 
 - [Extensibility — roadmap and iteration 1: bibliographic sources](Extensibility.md): three planned iterations, for bibliographic information, notifications and lending policies. Iteration 1 groups source extension, composition, configuration and test isolation; its bibliographic design is implemented and locally verified, as recorded in the implementation report.
 
-- [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1), notifications (iteration 2) and lending policies (iteration 3). Notification testing is designed; no notification test implementation is claimed.
+- [Testability — roadmap and iterations](Testability.md): proposed SUT boundaries, isolation tactics, test categories, AAA scenarios and evaluation for bibliographic sources (iteration 1), notifications (iteration 2) and lending policies (iteration 3). Notification testing is designed and tested.
 
-- [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Bibliographic startup selection is implemented and tested; deployment validation remains separate.
+- [Configurability — roadmap and iterations](Configurability.md): setup-time selection of sources and channels, lending parameters bound and validated at startup, and per-reader policy selection. Bibliographic startup selection is implemented and tested; deployment validation remains separate. Notification channel selection and reader preferences are implemented and tested.
 
 ## Requirements
 Below are listed the non-functional and functional requirements
@@ -96,7 +98,7 @@ Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lendin
 ### Scope and classification notes
 The existing non-functional section mixes required functional capabilities with quality requirements. Retrieving external data and sending notifications are functional; limited impact of additions is extensibility; setup-time selection is configurability. User stories refine these capabilities.
 
-Search by title is future scope outside US2. Merge behaviour (US3), specific notification events (US6/US7), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
+Search by title is future scope outside US2. Merge behaviour (US3), reader preferences (US8), and policy consultation (US12) are group proposals requiring scope confirmation. Coverage percentages, effort estimates and timings in the QAS are group targets, not faculty requirements.
 
 ## Quality Attribute Scenarios
 The Library Management service does not adequately support **Extensibility**, **Configurability** and **Testability**. The following scenarios make these qualities concrete and measurable.
@@ -124,7 +126,7 @@ The Library Management service does not adequately support **Extensibility**, **
 | Stimulus source | Developer, following a request from library management. |
 | Environment | Design and development time, with email, SMS and webhook channels already in production. |
 | Artifact | Reader notification module: notification channel interface and channel implementations. |
-| Response | The developer implements the channel interface in a new class. The notification dispatcher discovers it and sends through it together with the other enabled channels. Readers can then select it as one of their channels. |
+| Response | The developer implements the channel interface in a new class and registers it at setup. The dispatch in `LendingServiceImpl` sends through it together with the other enabled channels. Readers can then select it as one of their channels. |
 | Response measure | One new implementation of the channel interface plus its registration at setup. No changes to existing channels, the dispatcher, or the lending module. 100% of the existing tests still pass. Effort is at most 2 person-days. |
 
 #### QAS3 – Adding a new lending policy
@@ -228,7 +230,7 @@ This scenario specifies runtime selection behaviour, rather than setup-time reco
 | Environment | Development and continuous integration, without email/SMS providers or webhook receivers. |
 | Artifact | Reader notification module: dispatcher and channel implementations. |
 | Response | Channels are replaced by test doubles that record the calls. Tests assert which channels were used, for which reader, and with what content. |
-| Response measure | 0 real messages sent during tests. At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
+| Response measure | 0 real messages sent by the default test suite and the CI pipeline; the integration tests added after implementation are a separate manual step (see [Testability.md](Testability.md)). At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
 
 #### QAS11 – Testing lending policies independently
 **Related requirements:** US10, US11, US13, US14
@@ -324,3 +326,29 @@ Each requirement is followed through the design decision (IDs in [Extensibility.
 | QAS11 test policies independently | TST-LP-01 to TST-LP-09, CON-TST-10 | [Class isolation](Images/LendingPolicyClassIsolation.png), [Collaboration boundary](Images/LendingPolicyCollaborationBoundary.png) | injected `Clock` (`ClockConfig`), parameter records, history snapshot, constructor-injected `LendingServiceImpl` | All five levels listed in [Testability.md](Testability.md) (Analysis — Iteration 3); PIT 95% |
 
 Not covered: US12 (consultation endpoint) is a group proposal and was not implemented.
+
+
+## Traceability — Reader notifications
+
+Each requirement is followed through the design decision (IDs in [Extensibility.md](Extensibility.md), [Configurability.md](Configurability.md) and [Testability.md](Testability.md)), the view that shows it, the production code and the tests. Package `notificationmanagement.services` is written `notification`; test classes are under `src/test/java`. Status on 2026-10-30: all rows implemented and tested; `./mvnw test` 682 tests, 0 failures. See the [implementation report](NotificationImplementation.md).
+
+| Requirement | Design decision | View | Code | Tests |
+|---|---|---|---|---|
+| US6 due-date notification | EXT-NOT-03, EXT-NOT-05, EXT-NOT-07, CFG-NOT-04 | [Extensibility sequence](Images/NotificationMethodsExtensibilitySequence.png) | `LendingServiceImpl.checkDueAndOverdueLendings`, `notification.LendingNotification`, `notification.NotificationParameters` | `LendingServiceImplNotificationTest` (only on the notice day), `NotificationApiComponentTest`, `NotificationSystemTest` |
+| US7 overdue notification with fine | EXT-NOT-03, EXT-NOT-05, EXT-NOT-07 | Extensibility sequence | `LendingServiceImpl.checkDueAndOverdueLendings`, `notification.LendingNotification` | `LendingServiceImplNotificationTest` (days overdue and fine), the three channel tests, `NotificationApiComponentTest` |
+| US8 reader chooses channels | CFG-NOT-02, CFG-NOT-03 | [Configuration structure](Images/NotificationMethodsConfigurationStructure.png) | `ReaderNotificationController` (`PUT /api/readers/notification-channels`, role READER), `NotificationPreferenceService`, `ReaderDetails`, `WebhookUrl` | `NotificationPreferenceServiceTest`, `ReaderDetailsNotificationChannelsTest`, `NotificationApiComponentTest`, `NotificationSystemTest` |
+| US9 / QAS5 channels chosen at setup | CFG-NOT-01, EXT-NOT-05 | [Configuration sequence](Images/NotificationMethodsConfigurationSequence.png) | `configuration.NotificationChannelsConfig`, `notification.NotificationChannelComposition` | `NotificationChannelCompositionTest`, `NotificationChannelsConfigTest` |
+| QAS2 add a channel with limited impact | EXT-NOT-01, EXT-NOT-02, EXT-NOT-03 | [Extensibility structure](Images/NotificationMethodsExtensibilityStructure.png) | `notification.NotificationService`, the three channels, `NotificationChannelsConfig` | `FourthNotificationChannelExtensionTest`: one new test class, no production class changed; see Analysis — Iteration 2 in [Extensibility.md](Extensibility.md) |
+| QAS6 reader changes channels at runtime | CFG-NOT-02, CFG-NOT-03 | Configuration structure | `NotificationPreferenceService`, dispatch in `LendingServiceImpl` | `LendingServiceImplNotificationTest` (changed choice applies to the next check), `NotificationApiComponentTest` (other readers unaffected), `NotificationSystemTest` |
+| Channel failure | EXT-NOT-06 | Extensibility sequence | `LendingServiceImpl` (dispatch) | `LendingServiceImplNotificationTest` (failing channel does not stop the others), the three channel tests |
+| QAS10 test without real messages | TST-NOT-01 to TST-NOT-06, CON-TST-8 | [Class isolation](Images/NotificationMethodClassIsolation.png), [Collaboration boundary](Images/NotificationMethodsCollaborationBoundary.png) | Injected channels, `ReaderRepository`, `Clock` and framework clients | All levels listed in [Testability.md](Testability.md) (Analysis — Iteration 2): 10/10 dispatch branches, PIT 96% |
+
+## To-be views — Reader notifications
+
+No separate N1 to N4 diagrams were drawn for notifications, but the views below describe the change at each C4 granularity level and classes and relations are in the Extensibility and Configurability sketches.
+
+| As-is level | Reader notifications, to-be |
+|---|---|
+| N1 | New external systems: an SMTP server, an SMS gateway and the webhook receivers provided by readers |
+| N3 | The Application layer gains the notification contract and channels; `LendingServiceImpl` runs the periodic check and the dispatch. The setup composition in the Frameworks/Drivers layer selects the enabled channels and binds the schedule |
+| N4 | New package `notificationmanagement.services`; new classes `NotificationChannelsConfig`, `ReaderNotificationController`, `NotificationChannelsView`, `NotificationPreferenceService`, `ChooseNotificationChannelsRequest` and `WebhookUrl`; changed classes `LendingService`, `LendingServiceImpl`, `LendingRepository` and `SpringDataLendingRepository` (outstanding lendings), `ReaderDetails` (chosen channels and webhook URL) and `SecurityConfig` (endpoint rule)|

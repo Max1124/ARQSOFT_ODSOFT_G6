@@ -8,7 +8,7 @@ component "AAA test" as Test
 rectangle "Class SUT (one at a time)" {
  component "Real Notification Service\n(or LendingServiceImpl dispatch,\nor preference validation)" as Service
 }
-component "Sending Notification\n(delivery controlled)" as Mechanism
+component "Mock mail sender\nor mock HTTP server" as Mechanism
 component "ReaderRepository double" as Repo
 component "Recording NotificationService doubles\n(LendingServiceImpl tests only)" as Doubles
 component "Fixed enabled set\nand fixed clock" as Fixtures
@@ -22,12 +22,13 @@ Service --> Fixtures
 note bottom of Service
   "Notification Service" in this graph is a stand-in
   for the different implementations of
-  NotificationService that will need their
+  NotificationService that need their
   specific behaviour tested.
 end note
 
 note bottom of Mechanism
-  "Sending Notification" is a stand-in for what would be the specific notification channel protocol (SMS, e-mail, webhook (https)).
-  Delivery stays inside each implementation; how tests control it (framework client or local receiver) is pending. 0 real messages.
+  Delivery stays inside each implementation; the test controls the framework client it uses:
+  a mock JavaMailSender for e-mail, a MockRestServiceServer bound to the RestClient.Builder for SMS and webhook.
+  0 real messages.
 end note
 @enduml

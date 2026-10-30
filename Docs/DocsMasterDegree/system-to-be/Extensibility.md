@@ -2,6 +2,8 @@
 
 For bibliographic implementation, see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
+For notification implementation, see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
+
 Requirements and scenarios: [ADD.md](ADD.md). Organization follows the faculty material *Something about Attribute-Driven Design 0.9*, Steps 1–8. The detailed rationale is recorded in the linked technical memo.
 
 ## Step 1 — Review inputs
@@ -174,6 +176,8 @@ Sub-decision, trigger of due-date and overdue notifications (US6, US7):
 
 **Proposed choice:** T1, because it reuses the repository and clock already in `LendingServiceImpl`. T2 adds persistence the requirements do not need. T3 never warns inactive readers, so it does not meet US6 and US7.
 
+Implementation note: T1 is implemented. The check stays in `LendingServiceImpl`, but its schedule is bound in `NotificationChannelsConfig`, so the schedule is not fixed inside the service as the T1 row anticipated.
+
 #### Selected tactics — Iteration 3
 
 Modifiability tactics (faculty ADD material, Tactics (iii), and the catalogue above):
@@ -218,8 +222,10 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | EXT-NOT-01| `NotificationService` defines general behavior of a notification mechanism; specific implementations of the interface detail the workings of specific mechanisms. | Clients depend on one notification contract rather than on specific mechanisms, so mechanisms can be added or replaced without changing the code that sends notifications (QAS2). |
 | EXT-NOT-02| `SMSNotificationService`, `EmailNotificationService` and `WebhookNotificationService` implement `NotificationService` for SMS, email and webhook delivery. | Each mechanism's protocol and delivery details stay in its own class, so a change to one mechanism does not affect the others; covers the three required mechanisms (QAS2). |
 | EXT-NOT-03| `LendingServiceImpl` depends only on `NotificationService`, so adding a notification mechanism does not change `LendingServiceImpl`. | Lending business logic contains no mechanism-specific calls or conditions (QAS2); it can be tested with a test double of `NotificationService` instead of real delivery (QAS10). |
-| EXT-NOT-04| Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number from `ReaderDetails` and the email from the `username` of its `Reader`. | Notification mechanisms do not depend on the persistence technology, so the repository can be replaced by a test double (QAS10); contact data is read from the existing reader model instead of being duplicated. |
+| EXT-NOT-04| Notification implementations obtain the reader's contact data through `ReaderRepository`, not its Spring Data implementation: the phone number and the webhook URL from `ReaderDetails` and the email from the `username` of its `Reader`. | Notification mechanisms do not depend on the persistence technology, so the repository can be replaced by a test double (QAS10); contact data is read from the existing reader model instead of being duplicated. |
 | EXT-NOT-05| The enabled `NotificationService` implementations are composed at setup and injected into `LendingServiceImpl`, which notifies a reader through the injected channels that reader has chosen. Due-date and overdue notifications are triggered by a periodic, scheduler-driven check in `LendingServiceImpl` (trigger alternatives in Step 4). | A new channel is added by implementing the contract and registering it; neither the lending service nor the existing channels change (QAS2). Selection details are in CFG-NOT-01 to CFG-NOT-03. |
+| EXT-NOT-06 | A channel reports a delivery failure by throwing; `LendingServiceImpl` logs it and continues with the other channels and readers. There is no retry. (Group decision.) | One failing mechanism does not stop the others, and the contract suits all mechanisms (QAS2). |
+| EXT-NOT-07 | An overdue notice is sent on every check while the lending is overdue; the due-date notice is sent on every check on the notice day, which is once with the default daily schedule. | The reader sees the fine grow (US7) and is warned once before the limit date (US6), with no extra persistence. |
 | EXT-LP-01 | Define `LendingPolicy` as the common contract for evaluating a new lending and a renewal; it returns a `PolicyDecision` (allowed with duration, or rejected with a reason). | New policies implement a stable contract instead of adding conditions to `LendingServiceImpl` (QAS3); readers receive a reason when rejected (US13, US14). |
 | EXT-LP-02 | Implement `StandardLendingPolicy` and `AdaptiveLendingPolicy`, each with an immutable parameters object validated on creation. | Each policy encapsulates its own rules and limits (LP-S1–LP-S5, LP-A1–LP-A5); invalid parameter combinations are rejected at setup (LP-A3). |
 | EXT-LP-03 | `LendingPolicySelector` evaluates an ordered list of `PolicySelectionRule`s and returns the first matching policy, or Standard when none matches; it is called on every new lending and renewal. | Selection rules are kept apart from policy rules, so policies and rules change independently (QAS3); selection follows the reader's current history (LP-SEL1, LP-SEL2, QAS8). Configurability details are in CFG-LP-01 to CFG-LP-04. |
@@ -237,7 +243,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | CON-NOT-1 | Keep the existing backend. | Project context and current code |
 | CON-NOT-2 | Support email, SMS and webhook; notifications may use more than one method at a time. | ADD.md, Reader notifications requirements |
 | CON-NOT-3 | Allow the notification systems to be used to be chosen at setup time. | ADD.md, Reader notifications requirements |
-| CON-NOT-4 | Use the reader contact data already in the model: phone number in `ReaderDetails`, email as the `username` of `Reader`. | Current code |
+| CON-NOT-4 | Use the reader contact data already in the model: phone number in `ReaderDetails`, email as the `username` of `Reader`. The webhook URL, which the model did not hold, is added to `ReaderDetails`. | Current code; webhook target decision |
 | CON-NOT-5 | Keep mechanism-specific dependencies (SMS, email and webhook clients) outside `LendingServiceImpl` and the domain. | Proposed architectural boundary supporting QAS2 |
 | CON-LP-1 | Keep the existing backend and valid `Lending` invariants (dates, lending number, fines). | Project context and current code |
 | CON-LP-2 | Lending parameter values come from external setup configuration and must satisfy the policy constraints; invalid values stop startup. | Specification section 5, QAS7 |
@@ -258,7 +264,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 | `NotificationService` | Define the general behaviour of a notification mechanism. | Common notification contract | QAS2 |
 | `SMSNotificationService` | Deliver notifications by SMS, using the reader's phone number from `ReaderDetails`. | Implementation of `NotificationService` | QAS2, CON-NOT-2, CON-NOT-4 |
 | `EmailNotificationService` | Deliver notifications by email, using the `username` of the reader's `Reader`. | Implementation of `NotificationService` | QAS2, CON-NOT-2, CON-NOT-4 |
-| `WebhookNotificationService` | Deliver notifications by webhook. Source of the webhook target pending. | Implementation of `NotificationService` | QAS2, CON-NOT-2 |
+| `WebhookNotificationService` | Deliver notifications by webhook, posting the event to the URL the reader provided, stored in `ReaderDetails`. | Implementation of `NotificationService` | QAS2, CON-NOT-2, CON-NOT-4 |
 | `LendingServiceImpl` | Run the periodic due-date and overdue check and notify the reader through the injected channels the reader has chosen, using `NotificationService` only, without mechanism-specific calls. | Existing application service | QAS2, CON-NOT-1, CON-NOT-5 |
 | `ReaderRepository` | Provide reader contact data to the notification implementations, and the reader's chosen channels to `LendingServiceImpl`. | Existing repository interface | CON-NOT-4 |
 | Setup composition (notifications) | Register the installed channel implementations and inject the enabled ones into `LendingServiceImpl`. | Spring configuration; adding a channel adds a registration | QAS2, QAS5 |
@@ -274,7 +280,7 @@ Pattern: **Strategy** for policies, with an ordered list of selection rules and 
 
 Implemented classes are in `bibliographicmanagement.services`, `.infrastructure`, `.configuration`, `.api`, `.model` and `.repositories`; registration delegates to the existing book service.
 
-For notifications, the suggested placement is a notification package beside the lending module for the contract and the three implementations; mechanism clients stay inside the implementations (CON-NOT-5).
+For notifications, the suggested placement is a notification package beside the lending module for the contract and the three implementations; mechanism clients stay inside the implementations (CON-NOT-5). Implementation note: the contract and the three implementations are in `notificationmanagement.services`; the setup composition is in `configuration.NotificationChannelsConfig`; preference validation and its API are in `readermanagement`.
 
 For lending policies, the suggested placement is `lendingmanagement.services.policy` for the contract, policies, parameters, decision, selector, rules and history snapshot. The history provider is an application service that uses the existing `LendingRepository`.
 
@@ -286,7 +292,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 | Coordinator | ISBN and injected sources | Combined data and source outcomes; no automatic author/genre creation |
 | Merge | Ordered normalized successful results | Combined data/provenance using configured source priority and confirmed list rules in ADD.md |
 | Registration | Complete required metadata and resolved catalogue associations | Valid saved `Book`, or clear validation response without saving an incomplete book |
-| Notification channel | Lending event (due date approaching, or overdue with fine) and reader | Message delivered through that channel to the reader's contact data from `ReaderRepository`; no changes to lendings or readers; failure behaviour pending |
+| Notification channel | Lending event (due date approaching, or overdue with fine) and reader | Message delivered through that channel to the reader's contact data from `ReaderRepository`; no changes to lendings or readers; a delivery failure is thrown to the caller (EXT-NOT-06) |
 | Lending service — notification | Lendings found by the periodic check and the reader's chosen channels | One notification per chosen and enabled channel; the reader must have selected at least one channel and have valid contact data for it |
 | Lending history | Reader number and current date from the injected `Clock` | Read-only `ReaderLendingHistory`; no writes |
 | Policy selection | `ReaderLendingHistory` | Applicable `LendingPolicy`; Standard when no rule matches; no changes to existing lendings |
@@ -317,7 +323,7 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ![Notification methods sequence](Images/NotificationMethodsExtensibilitySequence.png)
 
-A periodic check in `LendingServiceImpl` finds lendings near their due date or overdue, reads the channels the reader has chosen and calls each through the contract; each implementation reads the contact data it needs from `ReaderRepository` (EXT-NOT-03 to EXT-NOT-05). The sketch shows all three channels; the webhook does not read contact data because its target source is pending.
+A periodic check in `LendingServiceImpl` finds lendings near their due date or overdue, reads the channels the reader has chosen and calls each through the contract; each implementation reads the contact data it needs from `ReaderRepository` (EXT-NOT-03 to EXT-NOT-05).
 
 ### Structural sketch — Notification methods
 
@@ -325,7 +331,9 @@ A periodic check in `LendingServiceImpl` finds lendings near their due date or o
 
 A new channel implements `NotificationService` and is registered at setup; `LendingServiceImpl` and the existing channels do not change (EXT-NOT-01, EXT-NOT-02, EXT-NOT-05).
 
-**Pending decisions:** further channels to add; channel failure behaviour; schedule of the periodic check; source of the webhook target.
+**Pending decisions:** further channels to add.
+
+**Resolved during implementation:** channel failure behaviour (EXT-NOT-06); schedule of the periodic check (daily at 09:00 by default, set at setup, see CFG-NOT-04); source of the webhook target (each reader provides their own URL, stored in `ReaderDetails`).
 
 ### Sequence sketch — Lending policy selection and evaluation
 
@@ -351,12 +359,12 @@ Shows where the policy package sits between `LendingController`, `LendingService
 
 ### Design Kanban
 
-This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. Bibliographic extensibility (QAS1) is addressed with implemented contracts and a controlled third-source experiment. Lending evidence remains described below; notification status is unchanged.
+This board evaluates the extensibility drivers at design level. Not addressed means no design iteration has developed the driver. Partially addressed means a structural proposal exists but contracts, impact analysis or validation remain incomplete. Addressed means the driver has a sufficiently specified and analysed design solution, not merely that a constraint has been agreed. Bibliographic extensibility (QAS1) is addressed with implemented contracts and a controlled third-source experiment. Lending and notification evidence is described below.
 
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
 | | | Bibliographic source extensibility — QAS1: implemented interface/adapters and merge; fake third-source collaboration passes without coordinator changes |
-|  | Notification extensibility — QAS2: common contract, three implementations and setup composition proposed; failure behaviour, check schedule and extension impact still need refinement/validation |  |
+| | | Notification extensibility — QAS2: common contract, three implementations and setup composition implemented; the fake fourth-channel test passes without changing any production class (see Analysis — Iteration 2) |
 | | | Lending policy extensibility — QAS3: policy contract, selector, history snapshot and renewal implemented; adding a third policy touched one setup class, one properties file and new files only (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
@@ -367,12 +375,17 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 - **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 ### Analysis — Iteration 2
 
-- **Iteration goal:** structurally supported by a common notification contract and one implementation per mechanism (QAS2). Adding a channel should require its implementation, registration and tests, while `LendingServiceImpl` and the existing channels remain unchanged. This remains to be verified.
-- **Trade-off:** one implementation per mechanism and a shared contract; the contract must suit all mechanisms, including their failure behaviour.
-- **Risks:** a future channel may need contact data the reader model does not hold (for example a webhook target), which would change the reader model or the contract.
-- **Extension experiment:** add a fake fourth channel and its registration, enable it through setup configuration and select it for a reader. Record changed files and check that the lending service and the existing channels remain unchanged.
-- **Representative tests:** `LendingServiceImpl` with recording doubles of the contract; each channel with a replaced `ReaderRepository`; 0 real messages (QAS10). See [Testability.md](Testability.md).
-- **Remaining work:** failure behaviour, check schedule and webhook target. [Configurability.md](Configurability.md) refines channel selection and reader preferences; implementation supplies extension-impact evidence later.
+- **Iteration goal:** achieved by a common notification contract and one implementation per mechanism (QAS2). Adding a channel requires its implementation, registration and tests, while `LendingServiceImpl` and the existing channels remain unchanged. The extension experiment below confirms this.
+- **Trade-off:** one implementation per mechanism and a shared contract; the contract must suit all mechanisms, including their failure behaviour (EXT-NOT-06).
+- **Risks:**
+    - A future channel may need contact data the reader model does not hold. This already happened with the webhook target, which added `WebhookUrl` to `ReaderDetails`.
+    - `NotificationPreferenceService` names the webhook channel, to require a URL when it is chosen. A new channel with its own per-reader contact data would therefore also change the preference service and its request, beyond the QAS2 response.
+    - Webhook URLs are supplied by readers and any http or https URL is accepted, so the server can be made to post to internal addresses.
+    - No timeout is set on the SMS, webhook or SMTP clients, and the check runs sequentially, so an unresponsive target can delay the rest of the check.
+- **Extension experiment (2026-10-30):** `FourthNotificationChannelExtensionTest` adds a fake fourth channel and its registration, enables it through the identifier list and selects it for a reader, with the real composition, preference validation, periodic check, dispatch and existing channels. The fourth channel receives the due-date and overdue events, also together with an existing channel, and when not listed it is neither created nor selectable. Changed files: one new test class; no production class changed. A real installation also adds its class and one registration entry in `NotificationChannelsConfig`; the test makes that entry in its own list of installed channels, because the production list is fixed in that class.
+- **Representative tests:** `LendingServiceImpl` with recording doubles of the contract; each channel with a replaced `ReaderRepository`; 0 real messages in the default suite and CI (QAS10). See [Testability.md](Testability.md).
+- **Evidence:** see [the notification implementation report](NotificationImplementation.md).
+- **Remaining work:** none for the iteration goal. [Configurability.md](Configurability.md) refines channel selection and reader preferences.
 
 ### Analysis — Iteration 3
 

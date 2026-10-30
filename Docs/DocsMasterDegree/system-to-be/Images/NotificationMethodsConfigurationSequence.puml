@@ -6,43 +6,48 @@ title Notification method selection at startup
 
 actor Administrator
 participant "External configuration" as Config
-participant "Channel composition" as Composition
-participant "Installed channel registry" as Registry
+participant "NotificationChannelsConfig\n(setup composition)" as Setup
+participant "NotificationChannelComposition" as Composition
 participant SMSNotificationService as SMS
 participant EmailNotificationService as Email
 participant WebhookNotificationService as Webhook
 participant LendingServiceImpl as Lending
+participant NotificationPreferenceService as Preferences
 
 Administrator -> Config : Set enabled notification channels\n(by identifier) before startup
 
-Composition -> Config : Read channel identifier list
-Config --> Composition : Configured value
-
+Setup -> Setup : Register installed channels\n(identifier -> supplier)
+Setup -> Config : Read channel identifier list
+Config --> Setup : Configured value
+Setup -> Composition : enabledChannels(identifiers)
 Composition -> Composition : Parse and validate list
-Composition -> Registry : Resolve identifiers / validate uniqueness
-Registry --> Composition : Matching implementations\nor validation error
 
 alt Invalid configuration
-  Composition -> Composition : Throw configuration exception
-  note right of Composition
+  Composition --> Setup : Exception (empty list,\nunknown or repeated identifier)
+  note right of Setup
     Application startup fails.
     Error is reported in application logs.
   end note
 else Valid configuration
   opt SMS channel enabled
-    Composition -> SMS ** : new SMSNotificationService
+    Composition -> SMS ** : supplier creates SMSNotificationService
   end
   opt Email channel enabled
-    Composition -> Email ** : new EmailNotificationService
+    Composition -> Email ** : supplier creates EmailNotificationService
   end
   opt Webhook channel enabled
-    Composition -> Webhook ** : new WebhookNotificationService
+    Composition -> Webhook ** : supplier creates WebhookNotificationService
   end
-  Composition -> Lending : Inject enabled instances\n(typed as NotificationService)
-  note over Composition,Lending
+  Composition --> Setup : Enabled channels, in configured order
+  note over Setup,Composition
+    A missing delivery setting of an enabled channel
+    also stops startup; disabled channels need none.
+  end note
+  Setup -> Lending : Inject enabled instances\n(typed as NotificationService)
+  Setup -> Preferences : Inject enabled instances\n(the set readers may choose from)
+  note over Setup,Preferences
     Only enabled implementations are instantiated;
     disabled channels send 0 notifications.
-    An unknown identifier stops startup (CFG-NOT-01).
     LendingServiceImpl depends only on NotificationService.
     Configuration changes require a restart.
   end note

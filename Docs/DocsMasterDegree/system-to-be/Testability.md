@@ -2,6 +2,8 @@
 
 Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
+Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
+
 Requirements and scenarios: ADD.md. Organization follows the faculty material Something about Attribute-Driven Design 0.9, Steps 1–8. The detailed rationale is recorded in the linked technical memos.
 
 ## Step 1 — Review inputs
@@ -10,7 +12,7 @@ Requirements and scenarios: ADD.md. Organization follows the faculty material So
 
 For bibliographic information, QAS9 requires controlled source responses and independently testable mapping and merge behaviour, without live provider calls. The design must allow behavioural dependencies to be replaced so coordination, communication and transformation can be tested separately. US1/US3 concern ISBN-assisted registration and combining partial data; US5/QAS4 concern setup-time source selection. The source interface and catalogue rules in [Extensibility.md](Extensibility.md), together with the agreed lookup outcomes in the [bibliographic testability memo](Technical%20Memos/Testability/BibliographicSources.md), define the expected behaviour.
 
-For notification methods, QAS10 requires channels to be replaced by test doubles that record the calls, so that tests assert which channels were used, for which reader and with what content, with 0 real messages sent and at least 80% branch coverage on the dispatcher and channel selection logic. The dispatcher is not a separate class: the dispatch mechanism is contained in `LendingServiceImpl` (EXT-NOT-05). US6/US7 define the due-date and overdue/fine events, US8 the reader's choice of several channels and US9 the setup-time selection of enabled channels; rules EXT-NOT-01 to EXT-NOT-05 in [Extensibility.md](Extensibility.md) and CFG-NOT-01 to CFG-NOT-03 in [Configurability.md](Configurability.md) define the expected behaviour. US8 remains proposed scope.
+For notification methods, QAS10 requires channels to be replaced by test doubles that record the calls, so that tests assert which channels were used, for which reader and with what content, with 0 real messages sent and at least 80% branch coverage on the dispatcher and channel selection logic. The dispatcher is not a separate class: the dispatch mechanism is contained in `LendingServiceImpl` (EXT-NOT-05). US6/US7 define the due-date and overdue/fine events, US8 the reader's choice of several channels and US9 the setup-time selection of enabled channels; rules EXT-NOT-01 to EXT-NOT-07 in [Extensibility.md](Extensibility.md) and CFG-NOT-01 to CFG-NOT-04 in [Configurability.md](Configurability.md) define the expected behaviour. US8 was proposed scope and is now implemented.
 
 For lending policies, QAS11 requires each policy rule, the parameter constraints, renewals and per-reader selection to be verified with injected parameters and a controllable clock, without starting Spring or the database for class tests. US10/QAS7 add startup validation of configured parameters; US11/US13/US14 and rules LP-S, LP-A, LP-SEL and LP-CFG in [ADD.md](ADD.md) define the expected behaviour.
 
@@ -20,7 +22,7 @@ For lending policies, QAS11 requires each policy rule, the parameter constraints
 - The bibliographic contract, coordinator, adapters and merge are implemented; class and collaboration test boundaries are documented in the implementation report.
 - `Author` constructs `Name` and `Bio` internally. Under the classroom single-class SUT convention, tests exercising this construction include real collaborators. This observation motivates explicit dependencies, but the proposed bibliographic design does not require changing the `Author` constructor.
 - `AuthorViewMapper` is used by the controller to build API views and HTTP links. This placement matches its responsibility and is not itself a testability defect. No relocation of existing REST mappers is required by this bibliographic iteration; provider response mapping is handled separately beside the external adapters.
-- Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule in `LendingServiceImpl` and the reader preference storage are design proposals, not implemented classes. Each implementation performs its own delivery (EXT-NOT-02); real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. Due-date and overdue events are detected by a periodic, scheduler-triggered check in `LendingServiceImpl` (Extensibility sequence sketch); the schedule itself, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values.
+- Notifications: the current code has no notification module, so there is nothing to test yet and no existing test to preserve. `NotificationService`, its three implementations, the channel composition, the dispatch rule in `LendingServiceImpl` and the reader preference storage are design proposals, not implemented classes. Each implementation performs its own delivery (EXT-NOT-02); real delivery (SMTP, SMS gateway, webhook receiver) is outside the control of the tests, and `LendingServiceImpl` does not yet depend on a notification contract. Due-date and overdue events are detected by a periodic, scheduler-triggered check in `LendingServiceImpl` (Extensibility sequence sketch); the schedule itself, the webhook target and the failure behaviour of a channel are still undefined, so their tests cannot yet have expected values. These elements were design proposals and these points were undefined when this analysis was written; they have since been implemented and decided (see Analysis — Iteration 2).
 - Some existing tests start Spring and replace repositories with mocks. An annotation or test name does not determine the SUT. Their actual real collaborators and assertions must be inspected.
 - Lending: the current structure, not the lack of test cases, is what prevents testing the lending rules in isolation (analysed per element in Step 3, Iteration 3). "Today" is read from `LocalDate.now()` inside `Lending`, `LendingNumber`, `SpringDataLendingRepository` and `LendingServiceImpl`; the numeric limit (3) and the overdue rule sit inside `LendingServiceImpl.create`, interleaved with repository access; configuration enters through `@Value` fields. The only service-level and repository-level lending tests (`LendingServiceImplTest`, `LendingRepositoryIntegrationTest`) are `@SpringBootTest` tests with real repositories, so the lending package has integration tests but no class-level test of the service or of any rule. The policy contract, selector, history snapshot and parameter objects were design proposals when this analysis was written and have since been implemented (see Analysis — Iteration 3).
 
@@ -37,7 +39,7 @@ Plain input/output fixtures and standard library/framework execution must be dis
 | Iteration | Goal | Drivers / Related requirements | Design concepts to consider |
 |---|---|---|---|
 | Iteration 1 | Make bibliographic classes and their collaboration testable with controlled data, without live provider dependencies. | QAS9 — Testability; US1, US3. Related: US5/QAS4 and section 1.3.3.4 | Explicit SUT boundaries, dependency injection, isolated mapping/merge, HTTP doubles, AAA, mutation analysis |
-| Iteration 2 | Verify notification dispatch and channels without sending real messages. | QAS10 — Testability; US6, US7, US9; US8 remains proposed scope | Channel doubles, recording interactions, local receivers |
+| Iteration 2 | Verify notification dispatch and channels without sending real messages. | QAS10 — Testability; US6, US7, US8, US9 | Channel doubles, recording interactions, local receivers |
 | Iteration 3 | Identify and decide the architectural changes that make lending rules, parameter validation and per-reader selection controllable and observable, and fix the order in which they are tested. | QAS11 — Testability; US10, US11, US13, US14. Related: QAS3, QAS7, QAS8 | Time as an injected input, parameter objects, policy extraction, history port, constructor injection, bottom-up test order (unit before integration) |
 
 The roadmap groups testing-related architectural concerns, not test counts. Lending parameters are externally configured (QAS7), so parameter validation is tested in isolation; automatic policy selection (specification section 4) is included.
@@ -74,7 +76,7 @@ This refines the design in Extensibility.md; it is not a refactoring of all exis
 
 ### Elements to analyse — Iteration 2
 
-- **Channel implementations (`SMSNotificationService`, `EmailNotificationService`, `WebhookNotificationService`):** build the message from the event and contact data and send it through their own mechanism (EXT-NOT-02, CON-NOT-5); the main class and mutation SUTs. No real message may leave a test (CON-TST-8).
+- **Channel implementations (`SMSNotificationService`, `EmailNotificationService`, `WebhookNotificationService`):** build the message from the event and contact data and send it through their own mechanism (EXT-NOT-02, CON-NOT-5); the main class and mutation SUTs. No real message may leave a test of the default suite (CON-TST-8).
 - **Channel composition:** registers only the `NotificationService` implementations listed in the setup property; tested with valid, empty and unknown identifiers; unknown identifiers fail startup (Configurability sequence sketch).
 - **Dispatch (intersection of enabled and chosen channels):** selects the channels used for a reader; boundary cases are an empty intersection, one channel and several channels. This logic lives in `LendingServiceImpl`, which receives the enabled channel instances from the composition (Extensibility and Configurability sketches).
 - **Reader notification preferences:** validation against the enabled set and per-reader storage in `ReaderDetails` (reader module); an empty choice is rejected and a disabled channel is rejected naming the channel.
@@ -146,10 +148,11 @@ Question: how can notification delivery be observed in tests without sending rea
 | A — Replace the channels with a recording double of `NotificationService` | Consumers depend only on `NotificationService`; tests inject a double that records reader, channel and content. | No new production element; follows EXT-NOT-03; simple assertions on who was notified; 0 real messages. | Does not execute the real channel implementations, which need their own tests. |
 | B — Replace only the delivery client inside each channel | Each channel receives its mail/SMS/HTTP client by injection; tests replace that client. | Executes the real channel, including message building and contact lookup. | Needs one injectable delivery boundary per mechanism; consumer tests still depend on real channels. |
 | C — Use real providers with a test account | Tests send real messages to a test mailbox, number or receiver. | Exercises real delivery. | Violates 0 real messages (QAS10); slow, non-repeatable, depends on external services. |
+| D — Non-sending unit tests plus actual integration tests (added after implementation) | The default suite and CI follow A and send nothing. Separate integration tests, run by hand, deliver through the actual mechanisms. | The automated suite keeps 0 real messages and repeatable results, and real delivery is also exercised. | The integration tests need local services and a phone, are not run by CI, and must be maintained separately. |
 
 ### Selected alternative — A
 
-A is the proposed design: it is the approach QAS10 describes (channels replaced by doubles that record calls) and lets tests assert which channels were used, for which reader and with what content. The cost is that the channel implementations are not exercised by these tests and are verified separately. Channels keep their delivery inside the class (EXT-NOT-02, CON-NOT-5); how their own tests avoid real sends is pending: either the test controls the framework client the channel uses internally (for example the mail sender or HTTP client), or the channel is verified only at collaboration level against a local receiver (local SMTP or HTTP stub). B is rejected because it ties every consumer test to real channel classes. C is rejected because it contradicts QAS10.
+D is the selected design. Consumer tests follow alternative A: channels are replaced by doubles that record calls, so tests assert which channels were used, for which reader and with what content. Channel class tests build the real channel with a mock `JavaMailSender` or a `MockRestServiceServer` bound to the `RestClient.Builder`, received through its constructor. This uses alternative B's technique for framework clients only, with no application-owned delivery interface. Separate manual integration tests deliver through the actual mechanisms. B is not used for consumer tests because it would tie them to real channel classes. C is rejected because it contradicts QAS10.
 
 ### Testability tactics — Notification testing
 
@@ -207,7 +210,7 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | TST-BIB-05 | Keep REST view mapping at the API boundary and provider response mapping beside adapters. | Avoid coupling provider transformations to HTTP request context. |
 | TST-NOT-01 | Consumers of notifications depend only on `NotificationService`; tests inject a recording double that stores reader, channel and content. | Observe who was notified without real delivery; follows EXT-NOT-03 (QAS10). |
 | TST-NOT-02 | Test each channel implementation as a single-class SUT with its `ReaderRepository` replaced and its delivery, which stays inside the class, controlled as decided in Step 4. | Message building and contact lookup are verified without sending anything (QAS10, EXT-NOT-02, EXT-NOT-04). |
-| TST-NOT-03 | Test channel composition with test properties: only listed identifiers are registered; an unknown identifier fails startup; the empty value behaves as agreed. | Disabled channels send 0 notifications (QAS5, CFG-NOT-01). |
+| TST-NOT-03 | Test channel composition with test properties: only listed identifiers are registered; an unknown identifier fails startup; an empty value fails startup. | Disabled channels send 0 notifications (QAS5, CFG-NOT-01). |
 | TST-NOT-04 | Test preference validation and dispatch as separate class SUTs: an empty choice is rejected and a choice including a disabled channel is rejected naming it; dispatch, in `LendingServiceImpl`, uses the intersection of enabled and chosen channels and is tested with one recording `NotificationService` double per channel and a `ReaderRepository` double. | One reader's choice does not affect another (QAS6, CFG-NOT-02, CFG-NOT-03). |
 | TST-NOT-05 | Run collaboration and system tests with test properties, a test database with known readers and preferences, and recording `NotificationService` doubles or local receivers. | Exercises real wiring and persistence while guaranteeing 0 real messages (QAS10). |
 | TST-NOT-06 | Apply mutation testing to channel implementations, preference validation and dispatch; review surviving mutants on the intersection and on the enabled-set check. | A wrong set operation or a skipped check silently sends too many or too few messages. |
@@ -232,7 +235,7 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | CON-TST-5 | Preserve domain invariants while making dependencies explicit; no blanket mocking or weakening validation for coverage. | Proposed design safeguard |
 | CON-TST-6 | Lending tests do not depend on the date they run; boundary dates are fixed through the injected clock. | QAS11 |
 | CON-TST-7 | Expected values for behaviour the specification leaves open (Adaptive count, renewal, history window) follow the design and say so in the test; a change of decision changes those tests only. | CON-LP-3 |
-| CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. | QAS10 |
+| CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. The integration tests added after implementation are a separate manual step (Alternative D). | QAS10 |
 | CON-TST-9 | Tests depending on undefined notification behaviour (channel failure, webhook target, behaviour with no enabled channel, schedule of the due-date and overdue check) are written once those are decided; no expected value assumes an answer. | Extensibility.md and Configurability.md pending decisions |
 | CON-TST-10 | A collaboration or system test is not written, and does not count as evidence, for a component whose included production classes lack passing class-level tests. Class tests precede integration tests in each iteration. | Reported colleague guidance; unit-versus-integration material |
 | CON-TST-11 | Every seam introduced for testability (clock, parameter objects, port, decision type) must also serve the production design; no test-only methods or flags in production code, and no loosening of `Lending` invariants. | CON-TST-5, CON-LP-1 |
@@ -260,13 +263,14 @@ Adapter/mapper/transport contracts are implemented. Tests that execute real help
 |---|---|---|---|
 | `NotificationService` | Common contract; the point where tests observe notifications. | Replaced by a recording double in consumer tests | QAS10, TST-NOT-01 |
 | `SMSNotificationService`, `EmailNotificationService` | Build the message from the event and the reader's contact data (`ReaderDetails` phone, `Reader` username) and send it through their own mechanism. | Class SUT with repository double and delivery controlled as decided in Step 4 | QAS10, TST-NOT-02 |
-| `WebhookNotificationService` | Build and send the webhook request. Target source pending. | Class SUT with delivery controlled as decided in Step 4; local receiver in collaboration | QAS10, TST-NOT-02 |
-| Channel composition | Register only the enabled implementations and inject them into `LendingServiceImpl`. | Collaboration with test properties; class test of the selection logic if extracted | QAS5, TST-NOT-03 |
+| `WebhookNotificationService` | Build the webhook request and send it to the URL the reader provided. | Class SUT with delivery controlled as decided in Step 4; local receiver in collaboration | QAS10, TST-NOT-02 |
+| Channel composition | Register only the enabled implementations and inject them into `LendingServiceImpl`. | Class test of `NotificationChannelComposition`; collaboration with test properties in `NotificationChannelsConfigTest` | QAS5, TST-NOT-03 |
 | Preference validation and storage | Reject empty choices and disabled channels; store per reader in `ReaderDetails`. | Class SUT with repository double; collaboration with test database | QAS6, TST-NOT-04 |
 | `LendingServiceImpl` | Run the periodic due-date and overdue check, compute the intersection of enabled and chosen channels and call each through the contract only. | Class SUT with recording channel doubles, repository double and fixed clock | QAS2, QAS10, TST-NOT-01, TST-NOT-04 |
 | Recording doubles and fixtures | Supply readers, channels and events; record calls. | Test-only; never replace the SUT | CON-TST-8 |
 
 Names and separations are proposals; dispatch is part of `LendingServiceImpl`, as in the Extensibility and Configurability sketches.
+Implementation note: these elements now exist, and the implementation report lists their tests.
 
 ### SUT boundaries and test categories — Iteration 2
 
@@ -285,16 +289,16 @@ Transparent-box testing applies only where this iteration changes a domain class
 | Case | SUT / level | Arrange → Act → Assert |
 |---|---|---|
 | Channel used | `LendingServiceImpl` (dispatch) / class | Recording channels for email, SMS, webhook; reader chose email and SMS, all enabled → notify → email and SMS recorded once with the reader and content, webhook 0 calls (US8, CFG-NOT-03). |
-| Disabled channel | `LendingServiceImpl` (dispatch) / class | Reader chose SMS, only email enabled → notify → no channel called (empty intersection); behaviour beyond that waits for the failure decision (CFG-NOT-03). |
+| Disabled channel | `LendingServiceImpl` (dispatch) / class | Reader chose SMS, only email enabled → notify → no channel called (empty intersection) (CFG-NOT-03). |
 | Several channels | `LendingServiceImpl` (dispatch) / class | Reader chose all three, all enabled → notify → each called once (QAS10). |
 | Preference rejected | Preference validation / class | Enabled set {email}; request {email, SMS} → validate → rejected with error naming SMS; stored preferences unchanged (CFG-NOT-02). |
 | Preferences per reader | Preference storage / collaboration | Two readers; change one → read both → only the first changed (QAS6). |
 | Empty choice | Preference validation / class | Enabled set {email, SMS}; request {} → validate → rejected; stored preferences unchanged (CFG-NOT-02). |
-| Contact data | `SMSNotificationService`, `EmailNotificationService` / class | Repository double returns a reader with a known phone and username → send → the controlled delivery receives that phone or email and the content; 0 real messages (EXT-NOT-04). Missing contact data waits for the failure decision. |
+| Contact data | `SMSNotificationService`, `EmailNotificationService` / class | Repository double returns a reader with a known phone and username → send → the controlled delivery receives that phone or email and the content; 0 real messages (EXT-NOT-04). Missing contact data is reported as a failure (EXT-NOT-06). |
 | Content | Each channel / class | Fixed due-date and overdue-with-fine events → send → message contains the lending identifier, the date and, for overdue, the fine (US6, US7). |
-| Composition | Channel composition / collaboration | Property `email,sms` → start context → exactly those two implementations exist; webhook absent (CFG-NOT-01). Unknown identifier → startup fails. Empty value waits for the agreed behaviour. |
-| Lending trigger | `LendingServiceImpl` / class | Recording `NotificationService`; lending due in a fixed number of days with the fixed clock (TST-LP-01) → run the periodic check → one notification for that reader; not-yet-due lending → none. Schedule pending. |
-| Due and overdue end to end | Collaboration | Seeded readers, lendings and preferences, fixed clock, recording doubles or local receivers → run the trigger → recorded notifications match each reader's chosen and enabled channels; 0 real messages (QAS10). |
+| Composition | Channel composition / collaboration | Property `email,sms` → start context → exactly those two implementations exist; webhook absent (CFG-NOT-01). Unknown identifier → startup fails. Empty value → startup fails. |
+| Lending trigger | `LendingServiceImpl` / class | Recording `NotificationService`; lending due in a fixed number of days with the fixed clock (TST-LP-01) → run the periodic check → one notification for that reader; not-yet-due lending → none. |
+| Due and overdue end to end | Collaboration | Seeded readers, lendings and preferences, real clock with dates relative to today, recording doubles or local receivers → run the trigger → recorded notifications match each reader's chosen and enabled channels; 0 real messages (QAS10). |
 | Preference change | System | Change a reader's choice through the API → trigger a notification → only the new channels receive it, without restart (QAS6). |
 
 ### Technical Memo — Iteration 2
@@ -380,7 +384,8 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 - Existing JUnit/Mockito facilities are candidates for class tests; Spring test support for real collaboration. Select a local HTTP double when provider-client boundaries are finalized.
 - Surefire executes the configured test selection; Failsafe can separate integration execution if explicitly configured. A test filename alone is not SUT evidence.
 - JaCoCo measures exercised code. The reported final target is at least 85%; line coverage is the current assumption and measurement scope still needs confirmation. QAS9's 80% branch target is a separate group proposal.
-- PIT mutation testing (pitest-maven 1.15.8) is configured in `pom.xml` and run on demand, not in the default build, on the lending policy package, `lendingmanagement.model` and `bookmanagement.model`. Surviving mutants are not failing functional tests; no score threshold is required (the professor does not ask for 100%).
+- Notifications: all automated tests run under Surefire through the `notification` Maven profile, and the Jenkins pipeline runs that profile's tests and mutation analysis. The integration test classes (`*IT`) are not selected by the default test selection.
+- PIT mutation testing (pitest-maven 1.15.8) is configured in `pom.xml` and run on demand, not in the default build, on the lending policy package, `lendingmanagement.model` and `bookmanagement.model`. The `notification` profile targets the notification services, `NotificationPreferenceService` and `LendingServiceImpl` (excluding its methods unrelated to dispatch). Surviving mutants are not failing functional tests; no score threshold is required (the professor does not ask for 100%).
 - Tests of error paths must pass when expected rejection occurs. No rule accepting integration failures is set here: any faculty-required tolerance needs a separately agreed criterion.
 
 ### Technical Memo
@@ -405,7 +410,7 @@ This is a focused view of implemented testability dependencies, not a complete c
 
 "Notification Service" stands in for the three `NotificationService` implementations. The class boundary tests one class at a time (a channel, `LendingServiceImpl` dispatch or preference validation) with a repository double, recording doubles, a fixed enabled set and a fixed clock. The collaboration boundary runs the real lending service, composition, preferences, channels and repository against a test database. In both, delivery stays outside the SUT, so no real message is sent.
 
-**Pending decisions (notifications):** how channel class tests control delivery (framework client or local receiver, see Step 4); schedule of the due-date and overdue check; webhook target; channel failure behaviour and behaviour with no enabled channel; fixture format for readers and preferences; whether context tests run under Surefire or Failsafe.
+**Resolved during implementation (notifications):** channel class tests control the framework client (Step 4); schedule of the check (CFG-NOT-04); webhook target (the reader's URL); channel failure behaviour (EXT-NOT-06); no enabled channel stops startup; fixtures are built directly in each test; context tests run under Surefire.
 
 ### Lending policy class isolation boundary
 
@@ -428,7 +433,7 @@ The columns are independent status lists: cells on the same row are not related.
 | Not addressed | Partially addressed | Addressed in the design |
 |---|---|---|
 | | | Bibliographic isolation — QAS9: implemented boundaries and 52 passing tests; see measured coverage and mutation scope below |
-| | Notification testability — QAS10: recording doubles, dispatch in `LendingServiceImpl`, SUT boundaries, boundary sketches, test categories and AAA cases proposed; control of channel delivery in tests, check schedule and failure behaviour still pending | |
+| | | Notification testability — QAS10: recording doubles, dispatch in `LendingServiceImpl` and SUT boundaries implemented; class, domain, mutation, collaboration and system tests written and passing (see Analysis — Iteration 2) |
 | | | Lending policy testability — QAS11: architectural changes (time input, parameter objects, policy extraction, history port, thin service) implemented; class, domain, mutation, collaboration and system tests written and passing (see Analysis — Iteration 3) |
 
 ### Analysis — Iteration 1
@@ -441,10 +446,17 @@ The columns are independent status lists: cells on the same row are not related.
 
 ### Analysis — Iteration 2
 
-- **Goal:** structurally supported. `LendingServiceImpl` depends only on `NotificationService` and receives the enabled channels by injection, so recording doubles show which channels were used, for which reader and with what content, with 0 real messages (QAS10). Channel implementations receive `ReaderRepository`, so contact lookup is controlled in class tests.
-- **Trade-off:** recording doubles do not execute the real channels, which therefore need their own class tests; because delivery stays inside each implementation (EXT-NOT-02), those tests depend on how delivery is controlled, which is still pending. Fixtures for readers, preferences and enabled sets must be maintained.
-- **Verification:** test dispatch in `LendingServiceImpl` with one recording double per channel and a `ReaderRepository` double, covering an empty intersection, one channel and several channels; test preference validation and each channel separately; then run composition and lending-trigger collaboration tests with test properties, a test database and a fixed clock, and the preference change as a system test. Measure branch coverage on dispatch and channel selection against the QAS10 target of 80%, and run mutation testing on the intersection and enabled-set checks (TST-NOT-06).
-- **Pending:** how channel class tests control delivery, the schedule of the due-date and overdue check, the webhook target, channel failure behaviour and the behaviour with no enabled channel (CON-TST-9). No implementation or passing tests are claimed.
+- **Goal:** achieved. `LendingServiceImpl` depends only on `NotificationService` and receives the enabled channels by injection, so recording doubles show which channels were used, for which reader and with what content, with 0 real messages (QAS10). Channel implementations receive `ReaderRepository`, so contact lookup is controlled in class tests.
+- **Trade-off:** recording doubles do not execute the real channels, which therefore have their own class tests, controlling the framework client each one uses. Fixtures for readers, preferences and enabled sets must be maintained.
+- **Evidence (2026-10-30, `-Pnotification test`: 101 tests, 0 failures):**
+  - Opaque-box, classes: `LendingServiceImplNotificationTest` (recording channels, fixed clock), `EmailNotificationServiceTest`, `SMSNotificationServiceTest`, `WebhookNotificationServiceTest`, `NotificationChannelCompositionTest`, `NotificationParametersTest`, `NotificationPreferenceServiceTest`.
+  - Transparent-box, domain: `ReaderDetailsNotificationChannelsTest` (`ReaderDetails` choice rules and `WebhookUrl`).
+  - Mutation: PIT with the `notification` profile: 69 mutations, 66 killed (96%), test strength 100%. The 3 without coverage are in `LendingServiceImpl` code unrelated to notifications (`findByLendingNumber` and two not-found lambdas). The domain classes are not in this PIT scope.
+  - Collaboration: `NotificationChannelsConfigTest` (setup composition), `FourthNotificationChannelExtensionTest` (QAS2 experiment), `NotificationApiComponentTest` (real controller, service, channels and database, with local receivers; webhook disabled).
+  - System: `NotificationSystemTest`: HTTP with real login and JWT, all three channels delivering to local receivers. The test runs the periodic check directly.
+  - Coverage: all 10 branches of the check and dispatch methods in `LendingServiceImpl` are covered, and 46/48 branches and 154/154 lines of the `notification` JaCoCo scope, against the QAS10 target of 80%. That JaCoCo scope does not include `LendingServiceImpl`; the dispatch figure comes from a report over all classes using the same execution data.
+- **Not covered:** the scheduler firing at the configured time (registration of the schedule is tested; tests call the check directly). Collaboration and system tests use the real clock with dates relative to today, not a fixed clock bean, as lending does.
+
 
 ### Analysis — Iteration 3
 
@@ -463,6 +475,31 @@ The columns are independent status lists: cells on the same row are not related.
 
 For bibliography, integrate the existing tests into Jenkins and validate deployment and live-provider behaviour. Refine existing tests only where relevant, without mass-refactoring every module. Continue with the notification and lending iterations after reviewing their drivers.
 
-For notifications: decide how channel tests control delivery and the failure behaviour first; then write the recording-double class tests for dispatch in `LendingServiceImpl` and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests.
+For notifications: done in this order: how channel tests control delivery and the failure behaviour first; then the recording-double class tests for dispatch in `LendingServiceImpl` and preference validation, followed by one channel at a time, and only then the composition and lending-trigger collaboration tests.
 
 For lending: done in dependency order (clock, parameter objects, policies and rules, selector, history provider, thin `LendingServiceImpl`), each with class-level tests before the collaboration and system tests; the existing lending integration tests stayed green throughout. Section 1.3.3.4 for lending is implemented (see Analysis — Iteration 3).
+
+
+
+## Post-implementation addition — Integration tests
+
+After the notification implementation, integration tests against the actual delivery mechanisms were deemed necessary to test the program (Alternative D in Step 4). They are not part of the design iteration above.
+
+They are separate from the automated evidence: the default test selection does not pick them up, and the Jenkins pipeline does not run them, so the default suite and CI still send 0 real messages (CON-TST-8). Each one is run by hand, once the service it needs is available:
+
+| Test class | Mechanism | What is delivered | What the test checks | What is checked by hand |
+|---|---|---|---|---|
+| `EmailNotificationDeliveryIT` | Mailpit on this machine (SMTP on port 1025, API on port 8025) | A message kept by Mailpit, not delivered to any mailbox | Recipient, sender, subject and content, read back through the Mailpit API | Nothing |
+| `SmsNotificationDeliveryIT` | SMS Gateway for Android, in local server mode on a phone; address and credentials come from the environment of the shell, as described in the test class | One real SMS | The gateway accepts the request (no channel failure is logged) | The SMS arriving on the phone |
+| `WebhookNotificationDeliveryIT` | Mockoon on this machine (port 8027, a `POST /webhook` route answering 200) | A request to the local receiver | The reader's URL is stored, and the receiver answers 2xx (no channel failure is logged) | The payload, in the Mockoon Logs tab |
+| `ScheduledNotificationCheckIT` | Mailpit on this machine (SMTP on port 1025, API on port 8025), with the check scheduled every 2 seconds | A message kept by Mailpit | The schedule fires the check with no direct call, and the due-date notice reaches Mailpit | Nothing |
+
+Each test registers a reader through the application's own service, logs in with a real JWT, has a librarian lend a book through the API, chooses the channel through the API and then runs the periodic check directly.
+
+Run one at a time, for example:
+
+```powershell
+.\mvnw.cmd test -Dtest=EmailNotificationDeliveryIT
+```
+
+Limits: only the due-date notice is exercised, not the overdue notice. Mailpit and Mockoon, and their configuration, are not part of the repository. SMS notifications can  only be tested if the machine is in the same network as the SMS server.

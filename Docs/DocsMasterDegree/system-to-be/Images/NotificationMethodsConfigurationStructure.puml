@@ -6,9 +6,9 @@ skinparam backgroundColor white
 title Notification configuration boundary
 
 component "External properties" as Properties
-component "Channel composition\n(startup)" as Composition
-component "Installed channel registry" as Registry
-component "Reader preference validation" as Preferences
+class "NotificationChannelsConfig\n(setup composition)" as Setup
+class NotificationChannelComposition
+class NotificationPreferenceService
 
 class LendingServiceImpl
 interface NotificationService
@@ -17,23 +17,19 @@ class EmailNotificationService
 class WebhookNotificationService
 interface ReaderRepository
 
-Properties --> Composition : enabled channel identifiers
-Composition --> Registry : validate / resolve
+Properties --> Setup : enabled channel identifiers
+Setup --> NotificationChannelComposition : installed channels (identifier -> supplier)\nand configured identifiers
 
-Registry --> SMSNotificationService : installed
-Registry --> EmailNotificationService : installed
-Registry --> WebhookNotificationService : installed
+NotificationChannelComposition ..> SMSNotificationService : instantiates if enabled
+NotificationChannelComposition ..> EmailNotificationService : instantiates if enabled
+NotificationChannelComposition ..> WebhookNotificationService : instantiates if enabled
 
-Composition ..> SMSNotificationService : instantiates if enabled
-Composition ..> EmailNotificationService : instantiates if enabled
-Composition ..> WebhookNotificationService : instantiates if enabled
-
-Composition --> LendingServiceImpl : inject enabled instances\n(as NotificationService)
+Setup --> LendingServiceImpl : inject enabled instances\n(as NotificationService)
 LendingServiceImpl --> NotificationService : notify on enabled channels\nchosen by the reader
 LendingServiceImpl --> ReaderRepository : reads chosen channels
 
-Composition --> Preferences : enabled channel set
-Preferences --> ReaderRepository : stores chosen channels\n(rejects disabled ones)
+Setup --> NotificationPreferenceService : inject enabled instances
+NotificationPreferenceService --> ReaderRepository : stores chosen channels\n(rejects disabled ones)
 
 SMSNotificationService ..|> NotificationService
 EmailNotificationService ..|> NotificationService

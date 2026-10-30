@@ -44,7 +44,9 @@ alt Lending is reaching its due date (US6)
     end
     opt Webhook selected
         Lending -> Webhook : send(reader, due date warning)
-        Webhook --> Reader : Sends notification via webhook (target pending)
+        Webhook -> RRepo : Get reader contact (webhook URL)
+        RRepo --> Webhook : Webhook URL
+        Webhook --> Reader : Sends notification via webhook
     end
 else Lending is overdue and a fine will be applied (US7)
     Lending -> RRepo : Get notification channels selected by the reader
@@ -63,7 +65,9 @@ else Lending is overdue and a fine will be applied (US7)
     end
     opt Webhook selected
         Lending -> Webhook : send(reader, overdue and fine warning)
-        Webhook --> Reader : Sends notification via webhook (target pending)
+        Webhook -> RRepo : Get reader contact (webhook URL)
+        RRepo --> Webhook : Webhook URL
+        Webhook --> Reader : Sends notification via webhook
     end
 end
 @enduml

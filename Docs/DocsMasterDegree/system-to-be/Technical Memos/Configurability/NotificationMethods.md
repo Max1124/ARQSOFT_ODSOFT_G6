@@ -1,6 +1,6 @@
 # Technical Memo — CFG-NOT: Notification configurability
 
-Status: proposed architecture; not implemented or verified.
+To see the implementation: [implemented contracts and verification](../../NotificationImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Configurability, iteration 2](../../Configurability.md). Primary drivers: QAS5 (setup-time channel selection) and QAS6 (reader preferences at runtime). Related drivers: QAS2, QAS10. Related requirements: US8, US9. Faculty basis: Project 1 section 1.3.3.2 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
 
@@ -20,7 +20,7 @@ A setup property lists the enabled channel identifiers. At startup a composition
 
 - Configuration-Driven Behavior: the enabled channels are defined in a project-level setup property, not in code.
 - Defer Binding: the enabled implementations are composed at startup; a change takes effect after one restart.
-- Use an Intermediary: the composition element stands between the configuration and `LendingServiceImpl`, so the service never reads properties.
+- Use an Intermediary: the composition element stands between the configuration and `LendingServiceImpl`, so the service reads no notification properties.
 - Separation of Concerns / Restrict Dependencies: reading configuration, validating it and using it are separate responsibilities; `LendingServiceImpl` depends only on `NotificationService` and the injected channels.
 
 Supporting concepts selected in Step 4: Dynamic Binding for reader preferences (runtime data restricted to the channels bound at setup), and Dependency Injection, Isolation and Mocking (testability, detailed in [Testability — Notification methods](../Testability/NotificationMethods.md)).
@@ -34,11 +34,13 @@ Supporting concepts selected in Step 4: Dynamic Binding for reader preferences (
 
 ## Solution
 
-CFG-NOT-01 (proposed): A setup property lists the enabled notification channels by identifier. Only the matching `NotificationService` implementations are registered and injected into `LendingServiceImpl`; an unknown identifier stops startup.
+CFG-NOT-01 (implemented): A setup property lists the enabled notification channels by identifier. Only the matching `NotificationService` implementations are registered and injected into `LendingServiceImpl`; an empty list, an unknown or repeated identifier, or a missing delivery setting of an enabled channel stops startup.
 
-CFG-NOT-02 (proposed): Reader notification preferences are validated against the enabled set and stored per reader in `ReaderDetails`. A reader must choose at least one channel; an empty choice is rejected, and a choice that includes a disabled channel is rejected with an error naming the channel.
+CFG-NOT-02 (implemented): Reader notification preferences are validated against the enabled set and stored per reader in `ReaderDetails`. A reader must choose at least one channel; an empty choice is rejected, and a choice that includes a disabled channel is rejected with an error naming the channel.
 
-CFG-NOT-03 (proposed): Dispatch, in `LendingServiceImpl`, uses the intersection of enabled channels and the reader's chosen channels.
+CFG-NOT-03 (implemented): Dispatch, in `LendingServiceImpl`, uses the intersection of enabled channels and the reader's chosen channels.
+
+CFG-NOT-04 (implemented): the schedule of the periodic check (daily at 09:00 by default) and the notice day (3 days before the limit date by default) are setup values, bound by the channel composition. The schedule can be disabled; a malformed schedule or a notice day that is not above 0 stops startup.
 
 ## Motivation and trade-offs
 
@@ -53,16 +55,17 @@ Selecting channels at setup lets each installation use only the mechanisms it ne
 See Step 4 of [Configurability.md](../../Configurability.md), iteration 2.
 
 ## Pending issues
+None. Resolved during implementation:
 
-- Property name, file location and environment-variable precedence for the channel list.
-- Behaviour when no channel is enabled (empty list).
-- Stored preferences that include a channel disabled at a later setup (for example a reader whose only chosen channel is no longer enabled).
-- Source of the webhook target.
+- Channel list settings: resolved in the implementation.
+- Behaviour when no channel is enabled (empty list): startup stops, because at least one channel must be enabled (group decision).
+- Stored preferences that include a channel disabled at a later setup: the channel is skipped by the intersection (CFG-NOT-03).
+- Source of the webhook target: each reader provides their own URL, stored in `ReaderDetails`.
 
 ## Verification
-Follow Step 7 of the linked iteration (Analysis and next verification — Iterations 2 and 3):
+Results of Step 7 of the linked iteration (Analysis and next verification — Iterations 2 and 3):
 
-- Enable each combination of channels (single, several) and confirm the effect after one restart with no code change.
-- Change a reader's channels to include a disabled one and confirm rejection naming the channel; submit an empty choice and confirm rejection; confirm other readers' preferences are unaffected.
+- Combinations of channels (single, several) are verified at configuration level, with no code change; no whole-application restart experiment was run.
+- A choice including a disabled channel is rejected naming the channel; an empty choice is rejected; other readers' preferences are unaffected.
 
-No implementation or passing results are claimed yet.
+101 notification tests pass. See [commands, SUT boundaries and limitations](../../NotificationImplementation.md).

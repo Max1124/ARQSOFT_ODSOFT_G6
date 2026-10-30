@@ -1,0 +1,49 @@
+{
+  "date": "2026-10-30",
+  "full_regression": {
+    "tests": 682,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0
+  },
+  "notification_tests": {
+    "profile": "notification",
+    "tests": 101,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "real_messages": 0
+  },
+  "jacoco": {
+    "scope": "notification profile; LendingServiceImpl not included",
+    "lines_covered": 154,
+    "lines_total": 154,
+    "line_percent": 100.0,
+    "branches_covered": 46,
+    "branches_total": 48,
+    "branch_percent": 95.83
+  },
+  "jacoco_dispatch": {
+    "scope": "check and dispatch methods of LendingServiceImpl, from a report over all classes using the same execution data",
+    "branches_covered": 10,
+    "branches_total": 10,
+    "branch_percent": 100.0
+  },
+  "pit": {
+    "profile": "notification",
+    "generated": 69,
+    "killed": 66,
+    "survived": 0,
+    "no_coverage": 3,
+    "no_coverage_scope": "LendingServiceImpl code unrelated to notifications",
+    "test_strength_percent": 100
+  },
+  "extension_experiment": {
+    "test": "FourthNotificationChannelExtensionTest",
+    "cases": 3,
+    "production_classes_changed": 0
+  },
+  "integration_tests_included": true,
+  "jenkins_pipeline_run": true,
+  "deployed": false
+}
