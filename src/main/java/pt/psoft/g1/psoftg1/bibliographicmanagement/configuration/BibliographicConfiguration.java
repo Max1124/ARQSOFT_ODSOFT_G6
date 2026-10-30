@@ -29,10 +29,11 @@ public class        BibliographicConfiguration {
             BibliographicTransport transport,
             ObjectMapper json,
             @Value("${bibliographic.google-books.url:https://www.googleapis.com/books/v1/volumes}")
-                    String endpoint) {
+                    String endpoint,
+            @Value("${bibliographic.google-books.api-key:${GOOGLE_BOOKS_API_KEY:}}") String apiKey) {
         return new SourceRegistration(
                 "google-books",
-                new GoogleBooksAdapter(transport, new GoogleBooksMapper(json), endpoint));
+                new GoogleBooksAdapter(transport, new GoogleBooksMapper(json), endpoint, apiKey));
     }
 
     @Bean

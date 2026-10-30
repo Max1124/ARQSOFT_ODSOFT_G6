@@ -24,8 +24,11 @@ public class Name {
             throw new IllegalArgumentException("Name cannot be null");
         if(name.isBlank())
             throw new IllegalArgumentException("Name cannot be blank, nor only white spaces");
-        if(!StringUtilsCustom.isAlphanumeric(name))
-            throw new IllegalArgumentException("Name can only contain alphanumeric characters");
+        if(name.length() > 150)
+            throw new IllegalArgumentException("Name has a maximum of 150 characters");
+        if(!name.matches("^[\\p{L}\\p{M}0-9 .’'-]+$")
+                || !name.matches("(?s).*[\\p{L}0-9].*"))
+            throw new IllegalArgumentException("Name must contain letters or numbers and may include spaces, periods, apostrophes and hyphens");
 
 /*
         //  Logic moved to UserService.java, ReaderService.java

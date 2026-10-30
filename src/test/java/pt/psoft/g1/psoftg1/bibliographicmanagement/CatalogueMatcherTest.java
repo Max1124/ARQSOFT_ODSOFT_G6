@@ -61,6 +61,31 @@ class CatalogueMatcherTest {
     }
 
     @Test
+    void punctuationVariantsSuggestAllCandidatesButNeverAutomaticallyAssociateThem() {
+        // Arrange: names are not unique identities, so even two matching candidates stay unresolved.
+        var first = mock(Author.class);
+        var second = mock(Author.class);
+        var unrelated = mock(Author.class);
+        when(first.getName()).thenReturn("Robert C Martin");
+        when(first.getAuthorNumber()).thenReturn(1552L);
+        when(second.getName()).thenReturn("Robert  C. Martin");
+        when(second.getAuthorNumber()).thenReturn(1553L);
+        when(unrelated.getName()).thenReturn("Martin Fowler");
+        when(unrelated.getAuthorNumber()).thenReturn(1554L);
+        when(authors.findAll()).thenReturn(List.of(first, second, unrelated));
+        var metadata = new BibliographicData("9780132350884", "Clean Code", null,
+                List.of("Robert C. Martin"), List.of(), Map.of());
+        // Act
+        var result = sut.resolve(metadata, RegistrationRequest.empty());
+        // Assert
+        assertEquals(List.of(1552L, 1553L), result.authorSuggestions().get("Robert C. Martin"));
+        assertTrue(result.authorIds().isEmpty());
+        assertTrue(result.needs().contains("Confirm catalogue author: Robert C. Martin"));
+        verify(authors, never()).save(any());
+        verify(confirmations, never()).save(any());
+    }
+
+    @Test
     void confirmedCorrespondenceResolvesAuthorButMultipleGenresNeedSelection() {
         // Arrange
         var correspondence = mock(AuthorCorrespondence.class);

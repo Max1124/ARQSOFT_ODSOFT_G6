@@ -37,4 +37,8 @@ public class Genre {
     public String toString() {
         return genre;
     }
+
+    public void rename(String name) {
+        setGenre(name);
+    }
 }

@@ -13,6 +13,56 @@ import java.net.URI;
 
 class ProviderAdapterTest {
     @Test
+    void openLibraryIoAndInterruptionFailuresNeverCallMapper() throws Exception {
+        // Arrange
+        var transport = mock(BibliographicTransport.class);
+        var mapper = mock(OpenLibraryMapper.class);
+        var adapter = new OpenLibraryAdapter(
+                transport, mapper, "http://localhost/books"
+        );
+
+        // First call throws IOException, second throws InterruptedException
+        doThrow(new IOException("offline"))
+                .doThrow(new InterruptedException("cancelled"))
+                .when(transport).execute(any());
+
+        // Act / Assert - IOException
+        var ioResult = adapter.lookupByIsbn("9780132350884");
+
+        assertEquals(SourceOutcome.Status.FAILURE, ioResult.status());
+
+        // Act / Assert - InterruptedException
+        try {
+            var interruptedResult = adapter.lookupByIsbn("9780132350884");
+
+            assertEquals(SourceOutcome.Status.FAILURE, interruptedResult.status());
+            assertTrue(Thread.currentThread().isInterrupted());
+        } finally {
+            Thread.interrupted();
+        }
+
+        verify(transport, times(2)).execute(any());
+        verifyNoInteractions(mapper);
+    }
+    @Test
+    void googleSendsEncodedKeyAndDoesNotExposeItInFailure() throws Exception {
+        // Arrange: fake credential only; never use a real key in tests.
+        var transport = mock(BibliographicTransport.class);
+        var mapper = mock(GoogleBooksMapper.class);
+        var uri = URI.create("http://localhost/books?q=isbn:9780132350884&maxResults=40&key=fake%2Bkey%26value");
+        when(transport.execute(uri))
+                .thenReturn(new BibliographicTransport.TransportResponse(429, "fake+key&value"));
+        var adapter = new GoogleBooksAdapter(transport, mapper, "http://localhost/books", "fake+key&value");
+        // Act
+        var result = adapter.lookupByIsbn("9780132350884");
+        // Assert
+        verify(transport).execute(uri);
+        assertEquals(SourceOutcome.Status.FAILURE, result.status());
+        assertEquals("HTTP 429", result.reason());
+        verifyNoInteractions(mapper);
+    }
+
+    @Test
     void googleUsesInjectedTransportAndMapper() throws Exception {
         // Arrange
         var transport = mock(BibliographicTransport.class);

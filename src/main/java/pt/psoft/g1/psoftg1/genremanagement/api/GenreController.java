@@ -2,6 +2,11 @@ package pt.psoft.g1.psoftg1.genremanagement.api;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import java.util.ArrayList;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import pt.psoft.g1.psoftg1.exceptions.NotFoundException;
@@ -17,6 +22,32 @@ import pt.psoft.g1.psoftg1.shared.services.SearchRequest;
 public class GenreController {
     private final GenreService genreService;
     private final GenreViewMapper genreViewMapper;
+
+    public record GenreRequest(@NotBlank @Size(max = 100) String genre) {}
+
+    @GetMapping
+    public ListResponse<GenreView> findAll() {
+        var views = new ArrayList<GenreView>();
+        genreService.findAll().forEach(genre -> views.add(genreViewMapper.toGenreView(genre)));
+        return new ListResponse<>(views);
+    }
+
+    @PostMapping
+    public ResponseEntity<GenreView> create(@Valid @RequestBody GenreRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(genreViewMapper.toGenreView(genreService.create(request.genre())));
+    }
+
+    @PutMapping("/{name}")
+    public GenreView update(@PathVariable String name, @Valid @RequestBody GenreRequest request) {
+        return genreViewMapper.toGenreView(genreService.update(name, request.genre()));
+    }
+
+    @DeleteMapping("/{name}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void delete(@PathVariable String name) {
+        genreService.delete(name);
+    }
 
     @PostMapping(value="/avgLendingsPerGenre")
     public ListResponse<GenreLendingsView> getAverageLendings(

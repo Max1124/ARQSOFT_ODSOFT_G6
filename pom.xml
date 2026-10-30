@@ -390,10 +390,20 @@
                         <param>pt.psoft.g1.psoftg1.bibliographicmanagement.services.BibliographicMerge</param>
                         <param>pt.psoft.g1.psoftg1.bibliographicmanagement.configuration.SourceSelection</param>
                         <param>pt.psoft.g1.psoftg1.bibliographicmanagement.model.AuthorCorrespondence</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.services.CatalogueMatcher</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.services.BibliographicRegistrationService</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.infrastructure.GoogleBooksAdapter</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.infrastructure.OpenLibraryAdapter</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.infrastructure.GoogleBooksMapper</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.infrastructure.OpenLibraryMapper</param>
                     </targetClasses>
                     <targetTests combine.self="override">
                         <param>pt.psoft.g1.psoftg1.bibliographicmanagement.BibliographicCoreTest</param>
                         <param>pt.psoft.g1.psoftg1.bibliographicmanagement.AuthorCorrespondenceTest</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.CatalogueMatcherTest</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.BibliographicRegistrationServiceTest</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.ProviderAdapterTest</param>
+                        <param>pt.psoft.g1.psoftg1.bibliographicmanagement.ProviderMappingTest</param>
                     </targetTests>
                     <reportsDirectory>${project.build.directory}/pit-reports-bibliographic</reportsDirectory>
                 </configuration>

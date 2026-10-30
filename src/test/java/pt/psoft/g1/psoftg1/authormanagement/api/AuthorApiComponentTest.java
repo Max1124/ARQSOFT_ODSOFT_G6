@@ -55,6 +55,18 @@ class AuthorApiComponentTest extends ApiIntegrationTestSupport {
     // register
 
     @Test
+    void librarianCanStoreAnInitialWithAPeriodWithoutChangingTheName() throws Exception {
+        // Arrange / Act
+        long id = register("Robert C. Martin");
+        // Assert
+        mockMvc.perform(get("/api/authors/" + id).with(asUser(librarian, Role.LIBRARIAN)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Robert C. Martin"));
+        assertThat(authorRepository.findByAuthorNumber(id).orElseThrow().getName())
+                .isEqualTo("Robert C. Martin");
+    }
+
+    @Test
     void librarianRegistersAnAuthorThatCanBeReadBack() throws Exception {
         final String body = mockMvc.perform(post("/api/authors").with(asUser(librarian, Role.LIBRARIAN))
                         .param("name", "Manuel Antonio Pina")

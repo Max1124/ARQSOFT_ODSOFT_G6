@@ -52,6 +52,69 @@ class ReaderServiceImplTest {
     }
 
     @Test
+    void searchDefaultsAndExplicitCriteriaPreserveResults() {
+        // Arrange
+        var row = mock(ReaderDetails.class);
+        when(readers.searchReaderDetails(any(), any())).thenReturn(List.of(row));
+        // Act
+        assertEquals(List.of(row), sut.searchReaders(null, null));
+        // Assert
+        var paging = org.mockito.ArgumentCaptor.forClass(pt.psoft.g1.psoftg1.shared.services.Page.class);
+        var query = org.mockito.ArgumentCaptor.forClass(SearchReadersQuery.class);
+        verify(readers).searchReaderDetails(paging.capture(), query.capture());
+        assertEquals(1, paging.getValue().getNumber());
+        assertEquals(10, paging.getValue().getLimit());
+        assertEquals("", query.getValue().getEmail());
+        assertEquals("", query.getValue().getName());
+        assertEquals("", query.getValue().getPhoneNumber());
+        var specified = new SearchReadersQuery("Ana", "919191919", "ana@example.org");
+        var page = new pt.psoft.g1.psoftg1.shared.services.Page(2, 5);
+        assertEquals(List.of(row), sut.searchReaders(page, specified));
+        verify(readers).searchReaderDetails(page, specified);
+        when(readers.searchReaderDetails(page, specified)).thenReturn(List.of());
+        assertThrows(NotFoundException.class, () -> sut.searchReaders(page, specified));
+    }
+
+    @Test
+    void removingPhotoPersistsRemovalBeforeDeletingPhotoRecord() {
+        // Arrange
+        var details = mock(ReaderDetails.class);
+        var photo = mock(pt.psoft.g1.psoftg1.shared.model.Photo.class);
+        when(readers.findByReaderNumber("2026/1")).thenReturn(Optional.of(details));
+        when(details.getPhoto()).thenReturn(photo);
+        when(photo.getPhotoFile()).thenReturn("old.png");
+        when(readers.save(details)).thenReturn(details);
+        // Act
+        assertEquals(Optional.of(details), sut.removeReaderPhoto("2026/1", 2L));
+        // Assert
+        var order = inOrder(details, readers, photos);
+        order.verify(details).removePhoto(2L);
+        order.verify(readers).save(details);
+        order.verify(photos).deleteByPhotoFile("old.png");
+        assertThrows(NotFoundException.class, () -> sut.removeReaderPhoto("missing", 2L));
+    }
+
+    @Test
+    void emptyInterestsClearSelectionAndUnpairedUploadIsDiscardedOnUpdate() {
+        // Arrange
+        var details = mock(ReaderDetails.class);
+        var user = mock(Reader.class);
+        var request = new UpdateReaderRequest();
+        request.setInterestList(List.of());
+        request.setPhoto(mock(org.springframework.web.multipart.MultipartFile.class));
+        when(readers.findByUserId(42L)).thenReturn(Optional.of(details));
+        when(details.getReader()).thenReturn(user);
+        when(readers.save(details)).thenReturn(details);
+        // Act
+        assertSame(details, sut.update(42L, request, 2L, null));
+        // Assert
+        assertNull(request.getPhoto());
+        verify(details).applyPatch(2L, request, null, List.of());
+        verifyNoInteractions(genres);
+        verify(users).save(user);
+    }
+
+    @Test
     void duplicateUsernameStopsCreationBeforeMappingOrSaving() {
         // Arrange
         CreateReaderRequest request = request();

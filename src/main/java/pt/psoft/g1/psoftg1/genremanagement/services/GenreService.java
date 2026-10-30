@@ -9,6 +9,9 @@ import java.util.Optional;
 
 public interface GenreService {
     Iterable<Genre> findAll();
+    Genre create(String name);
+    Genre update(String currentName, String newName);
+    void delete(String name);
     Genre save(Genre genre);
     Optional<Genre> findByString(String name);
     List<GenreBookCountDTO> findTopGenreByBooks();

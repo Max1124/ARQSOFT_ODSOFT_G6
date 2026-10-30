@@ -1,0 +1,22 @@
+{
+  "date": "2026-10-30",
+  "full_regression": {
+    "skipped": 0,
+    "failures": 0,
+    "errors": 0,
+    "tests": 593
+  },
+  "final_matcher_tests": 6,
+  "mutation": {
+    "statuses": {
+      "SURVIVED": 9,
+      "NO_COVERAGE": 7,
+      "KILLED": 108
+    },
+    "generated": 124,
+    "killed_percent": 87.09677419354838,
+    "scope": "9 explicitly selected bibliographic classes"
+  },
+  "live_provider_calls_in_this_run": 0,
+  "same_jar_azure_experiment_performed": false
+}

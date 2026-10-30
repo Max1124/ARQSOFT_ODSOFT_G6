@@ -1,7 +1,5 @@
 # Bibliographic implementation and verification
 
-Implementation date: 2026-10-28. Scope: confirmed ISBN-based bibliographic behaviour in ADD.md (US1, US3, US4, US5; QAS1, QAS4, QAS9). Title search and automatic cover import remain outside this iteration.
-
 ## What was implemented and why
 
 - `BibliographicSource` is the extension contract. Google Books and Open Library adapters encapsulate their requests and use dedicated mappers, producing partial `BibliographicData` and Found/NotFound/Failure outcomes.
@@ -23,6 +21,24 @@ All new routes require a librarian. Existing book endpoints remain available.
 If at least one source succeeds, available data is retained. A failed source adds an incomplete-lookup warning. All NotFound means no match; no Found with any Failure means lookup could not be completed. A librarian may supply complete manual overrides even when external metadata is unavailable; domain and association validation still apply.
 
 ## Configuration and reproduction
+
+### Google Books application identification
+
+GoogleBooksAdapter accepts an external API key and sends it as the encoded `key` query parameter.
+Set `GOOGLE_BOOKS_API_KEY` in the environment of the process launching the application, or supply
+`bibliographic.google-books.api-key` through external configuration. Do not commit a real key.
+The key is optional in code so controlled local-provider tests can run without credentials;
+Google production requests should use the project's key. No live success with that key is claimed yet.
+HTTP failure outcomes expose only the status code, not the provider body or credential.
+
+In PowerShell, enter the key without displaying or saving it in command history, then start the application:
+
+```powershell
+$secret = Read-Host 'Chave Google Books' -AsSecureString
+$env:GOOGLE_BOOKS_API_KEY = [System.Net.NetworkCredential]::new('', $secret).Password
+Remove-Variable secret
+.\mvnw.cmd spring-boot:run
+```
 
 Development defaults are in application.properties. Deployment overrides must be outside the JAR. Copy `config/bibliographic.properties.example` to a deployment-owned file and use standard Spring Boot additional configuration:
 
@@ -81,3 +97,30 @@ No Azure deployment or Jenkins change was performed. Existing lending CI does no
 Requests follow [Google volumes.list](https://developers.google.com/books/docs/v1/reference/volumes/list) and the [Open Library Books API](https://openlibrary.org/dev/docs/api/books). Open Library marks `/api/books` as legacy; the adapter isolates that dependency for future replacement. Its `jscmd=data` response may omit description, which remains optional. Google results are filtered to an exact returned ISBN identifier to avoid importing another edition.
 
 On 2026-10-28 a public HTTP check for ISBN 9780132350884 returned Open Library 200 with the matching ISBN object, and Google 429 (Too Many Requests). This verifies observed endpoint availability only, not an end-to-end live registration. Local tests verify failure handling, but cannot guarantee third-party uptime or quotas. Google live success remains unverified in this environment.
+
+## Implementation changes
+## Name validation and possible duplicate authors
+
+Name validation: Updated the shared Name value object to accept valid names such as Robert C. Martin, including accented characters, apostrophes and hyphens. Invalid characters and names exceeding 150 characters are rejected.
+
+Author matching: Improved CatalogueMatcher to ignore periods and repeated whitespace when suggesting existing authors. Suggestions do not automatically resolve identities or merge duplicate authors.
+
+Duplicate handling: Existing authors can be reused through catalogue suggestions and explicit librarian confirmation. Automatic duplicate detection and merging remain outside the current implementation.
+
+## Additional verification
+
+QAS1 — Extensibility: Verified that a third bibliographic source can be registered, selected and merged through the existing coordinator without modifying its logic.
+
+QAS4 — Configurability: Tested different source configurations, execution order, disabled sources, invalid configurations and Google API key propagation using controlled HTTP transport.
+
+QAS9 — Testability: Expanded automated tests covering domain validation, provider adapters, mapping, catalogue matching, registration and real HTTP/JWT workflows with local provider doubles.
+
+## Updated test results
+
+Full regression: 593 tests passed, with zero failures, errors or skipped tests.
+
+Mutation testing (PIT): 124 mutants generated, 108 killed (87.10%), 9 survived and 7 without coverage.
+
+Mutation scope: Expanded from 3 to 9 production classes. The previous result of 38/38 killed remains valid for its smaller scope.
+
+Regression validation: Confirmed that Robert C. Martin can be stored and retrieved through the author API.

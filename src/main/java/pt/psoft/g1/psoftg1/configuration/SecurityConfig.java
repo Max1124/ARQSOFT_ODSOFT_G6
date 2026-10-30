@@ -155,6 +155,10 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.PUT, "/api/readers/notification-channels").hasRole(Role.READER)
                 //end readers
                 //genres
+                .requestMatchers(HttpMethod.GET, "/api/genres").hasRole(Role.LIBRARIAN)
+                .requestMatchers(HttpMethod.POST, "/api/genres").hasRole(Role.LIBRARIAN)
+                .requestMatchers(HttpMethod.PUT, "/api/genres/*").hasRole(Role.LIBRARIAN)
+                .requestMatchers(HttpMethod.DELETE, "/api/genres/*").hasRole(Role.LIBRARIAN)
                 .requestMatchers(HttpMethod.GET,"/api/genres/top5").hasRole(Role.LIBRARIAN)
                 .requestMatchers(HttpMethod.GET,"/api/genres/avgLendings").hasRole(Role.LIBRARIAN)
                 .requestMatchers(HttpMethod.POST,"/api/genres/avgLendingsPerGenre").hasRole(Role.LIBRARIAN)

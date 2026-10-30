@@ -52,7 +52,7 @@ public class CatalogueMatcher {
                 } else {
                     List<Long> candidates = new ArrayList<>();
                     for (var author : authors.findAll())
-                        if (normalize(author.getName()).equals(normalize(name)))
+                        if (normalizeAuthorSuggestion(author.getName()).equals(normalizeAuthorSuggestion(name)))
                             candidates.add(author.getAuthorNumber());
                     suggestions.put(name, List.copyOf(candidates));
                     needs.add("Confirm catalogue author: " + name);
@@ -91,5 +91,10 @@ public class CatalogueMatcher {
 
     private String normalize(String value) {
         return value.strip().toLowerCase(Locale.ROOT);
+    }
+
+    // Candidate search only: never establish identity or change stored names with this key.
+    private String normalizeAuthorSuggestion(String value) {
+        return normalize(value).replace(".", "").replaceAll("\\s+", " ");
     }
 }

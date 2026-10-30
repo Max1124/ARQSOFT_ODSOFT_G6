@@ -85,6 +85,7 @@ class BibliographicRegistrationServiceTest {
         assertEquals("Corrected", argument.getValue().getTitle());
         assertEquals("", argument.getValue().getDescription());
         assertEquals(List.of(1L), argument.getValue().getAuthors());
+        assertEquals("Fiction", argument.getValue().getGenre());
         assertNull(argument.getValue().getPhoto());
     }
 
@@ -103,5 +104,53 @@ class BibliographicRegistrationServiceTest {
                 IllegalArgumentException.class,
                 () -> sut.confirm(ISBN, "google-books", "Invented", 1L));
         verifyNoInteractions(matcher);
+    }
+
+    @Test
+    void confirmedAuthorMustComeFromTheRequestedSource() {
+        // Arrange
+        var data = new BibliographicData(ISBN,"Title",null,List.of("Alice"),List.of(),Map.of());
+        when(lookup.retrieve(ISBN)).thenReturn(new LookupResult(LookupResult.Status.FOUND,data,
+                List.of(SourceOutcome.found("google-books",data)),List.of()));
+        // Act / Assert
+        sut.confirm(ISBN,"google-books","Alice",7L);
+        verify(matcher).confirm("google-books",ISBN,"Alice",7L);
+        assertThrows(IllegalArgumentException.class,()->sut.confirm(ISBN,"open-library","Alice",7L));
+        assertThrows(IllegalArgumentException.class,()->sut.confirm(ISBN,"google-books","Other",7L));
+        verifyNoMoreInteractions(matcher);
+    }
+
+    @Test
+    void previewReturnsLookupAndResolutionWithoutWriting() {
+        // Arrange
+        var result = new LookupResult(LookupResult.Status.NOT_FOUND,null,List.of(),List.of());
+        var resolution = new CatalogueResolution(List.of(),null,Map.of(),List.of("Select catalogue authors"));
+        when(lookup.retrieve(ISBN)).thenReturn(result);
+        when(matcher.resolve(null,RegistrationRequest.empty())).thenReturn(resolution);
+        // Act
+        var preview=sut.preview(ISBN);
+        // Assert
+        assertSame(result,preview.lookup()); assertSame(resolution,preview.catalogue());
+        verifyNoInteractions(books,repository);
+    }
+
+    @Test
+    void manualRegistrationWorksWithoutProviderDataAndRespectsLengthLimits() {
+        // Arrange
+        when(lookup.retrieve(ISBN)).thenReturn(new LookupResult(LookupResult.Status.FAILURE,null,List.of(),List.of()));
+        when(matcher.resolve(eq(null),any())).thenReturn(new CatalogueResolution(List.of(7L),"Computers",Map.of(),List.of()));
+        var book=mock(Book.class); when(books.create(any(),eq(ISBN))).thenReturn(book);
+        var request=new RegistrationRequest("T".repeat(128),"D".repeat(4096),"Computers",List.of(7L));
+        // Act
+        assertSame(book,sut.register(ISBN,request).book());
+        // Assert
+        var captured=org.mockito.ArgumentCaptor.forClass(CreateBookRequest.class);
+        verify(books).create(captured.capture(),eq(ISBN));
+        assertEquals(request.title(),captured.getValue().getTitle());
+        assertEquals(request.description(),captured.getValue().getDescription());
+        clearInvocations(books);
+        var rejected=sut.register(ISBN,new RegistrationRequest("Title","D".repeat(4097),"Computers",List.of(7L)));
+        assertNull(rejected.book()); assertTrue(rejected.needs().contains("Description must not exceed 4096 characters"));
+        verifyNoInteractions(books);
     }
 }

@@ -14,6 +14,37 @@ import static org.mockito.Mockito.*;
  * Reflection supplies only the JPA-managed version. Real value-object behavior makes this
  * a multi-class collaboration, not an isolated ReaderDetails unit test. */
 class ReaderDetailsPhoneCollaborationTest {
+    @Test
+    void patchUpdatesIdentityBirthDatePhotoAndInterestsWithMatchingVersion() {
+        // Arrange
+        var sut=details(); var request=mock(UpdateReaderRequest.class);
+        when(request.getUsername()).thenReturn("updated@example.org");
+        when(request.getPassword()).thenReturn("NewPassw0rd!123");
+        when(request.getFullName()).thenReturn("Updated Name");
+        when(request.getBirthDate()).thenReturn("1990-02-03");
+        var interests=java.util.List.of(mock(pt.psoft.g1.psoftg1.genremanagement.model.Genre.class));
+        // Act
+        sut.applyPatch(4L,request,"portrait.png",interests);
+        // Assert
+        verify(sut.getReader()).setUsername("updated@example.org");
+        verify(sut.getReader()).setPassword("NewPassw0rd!123");
+        verify(sut.getReader()).setName("Updated Name");
+        assertEquals(java.time.LocalDate.of(1990,2,3),sut.getBirthDate().getBirthDate());
+        assertEquals("portrait.png",sut.getPhoto().getPhotoFile());
+        assertEquals(interests,sut.getInterestList());
+    }
+
+    @Test
+    void photoRemovalRequiresCurrentVersion() {
+        // Arrange
+        var sut=details();
+        sut.applyPatch(4L,mock(UpdateReaderRequest.class),"portrait.png",null);
+        // Act / Assert
+        assertThrows(ConflictException.class,()->sut.removePhoto(3L));
+        assertEquals("portrait.png",sut.getPhoto().getPhotoFile());
+        sut.removePhoto(4L);
+        assertNull(sut.getPhoto());
+    }
     private ReaderDetails details() {
         ReaderDetails details = new ReaderDetails(1, mock(Reader.class), "2000-01-01",
                 "912345678", true, false, false, null, null);

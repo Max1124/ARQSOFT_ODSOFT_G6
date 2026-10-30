@@ -24,6 +24,12 @@ import java.util.*;
 
 public interface SpringDataGenreRepository extends GenreRepository, GenreRepoCustom, CrudRepository<Genre, Integer> {
 
+    @Query("SELECT (COUNT(b) > 0) FROM Book b WHERE b.genre = :genre")
+    boolean isUsedByBooks(@Param("genre") Genre genre);
+
+    @Query("SELECT (COUNT(r) > 0) FROM ReaderDetails r JOIN r.interestList g WHERE g = :genre")
+    boolean isUsedByReaders(@Param("genre") Genre genre);
+
     @Query("SELECT g FROM Genre g")
     List<Genre> findAllGenres();
 

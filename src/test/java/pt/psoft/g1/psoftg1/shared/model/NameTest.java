@@ -6,6 +6,33 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class NameTest {
     @Test
+    void acceptsAndPreservesLegitimatePunctuation() {
+        // Arrange / Act / Assert
+        for (String value : new String[]{"Robert C. Martin", "J. R. R. Tolkien", "Anne-Marie O’Neill", "José D'Ávila"}) {
+            assertEquals(value, new Name(value).toString());
+        }
+    }
+
+    @Test
+    void enforcesActualStorageLengthBoundary() {
+        // Arrange
+        String maximum = "A".repeat(150);
+        // Act / Assert
+        assertEquals(maximum, new Name(maximum).toString());
+        assertThrows(IllegalArgumentException.class, () -> new Name(maximum + "A"));
+    }
+
+    @Test
+    void rejectsPunctuationOnlyMarkupAndControlCharactersWithoutChangingExistingName() {
+        // Arrange
+        Name name = new Name("Robert C. Martin");
+        // Act / Assert
+        for (String invalid : new String[]{"...", "---", "<script>", "Robert\nMartin", "Robert\tMartin"}) {
+            assertThrows(IllegalArgumentException.class, () -> name.setName(invalid));
+            assertEquals("Robert C. Martin", name.toString());
+        }
+    }
+    @Test
     void ensureNameMustNotBeNull() {
         assertThrows(IllegalArgumentException.class, () -> new Name(null));
     }
