@@ -11,12 +11,10 @@ pipeline {
 
     parameters {
         booleanParam(name: 'RUN_MUTATION', defaultValue: false, description: 'Run PIT on the lending, bibliographic and notification classes (slow)')
-        string(name: 'JAVA_HOME_17', defaultValue: '/usr/lib/jvm/java-17-openjdk-amd64', description: 'JDK 17 on this machine (Lombok 1.18.30 does not compile on newer JDKs)')
+        string(name: 'JAVA_HOME_17', defaultValue: '', description: 'Optional: folder of a JDK 17. Empty = found automatically (macOS, Linux, WSL). Lombok 1.18.30 does not compile on newer JDKs')
     }
 
     environment {
-        JAVA_HOME = "${params.JAVA_HOME_17}"
-        PATH = "${JAVA_HOME}/bin:${env.PATH}"
         // One Maven profile per student: -Plending (Guilherme), -Pbibliographic (Max1124), -Pnotification (AlexandreMouraCosta).
         MVN = './mvnw -B -Plending'
         MVN_BIB = './mvnw -B -Pbibliographic'
@@ -27,8 +25,13 @@ pipeline {
     stages {
         stage('Check Java') {
             steps {
+                sh 'chmod +x mvnw deploy/deploy.sh jenkins/local/find-jdk17.sh'
+                // No hardcoded JDK path: it differs between macOS, Linux and WSL. The script finds a JDK 17.
+                script {
+                    env.JAVA_HOME = sh(returnStdout: true, script: "jenkins/local/find-jdk17.sh '${params.JAVA_HOME_17}'").trim()
+                    env.PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+                }
                 sh 'java -version'
-                sh 'chmod +x mvnw deploy/deploy.sh'
                 // The per-student steps live in jenkins/areas.groovy, shared by the three pipelines.
                 script { areas = load 'jenkins/areas.groovy' }
             }

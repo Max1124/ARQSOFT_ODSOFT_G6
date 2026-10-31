@@ -106,7 +106,7 @@ Stop it with Ctrl+C. Next time repeat this step; your jobs and settings are kept
 #### Step 6. Run it once by hand
 
 1. Open the job, **Build with Parameters**.
-2. Set `JAVA_HOME_17` to your JDK 17 folder from Step 2 (WSL: `/usr/lib/jvm/java-17-openjdk-amd64`; macOS: the `/opt/homebrew/opt/openjdk@17/...` path). Leave `RUN_MUTATION` unticked; mutation testing is slow.
+2. Leave `JAVA_HOME_17` empty: the pipeline finds your JDK 17 itself (macOS `java_home` and Homebrew, Linux and WSL `/usr/lib/jvm`). Only fill it if you installed JDK 17 somewhere unusual. Leave `RUN_MUTATION` unticked; mutation testing is slow.
 3. Build. Open the build, **Console Output**, and watch the stages. A green build means the setup works.
    The first run is slow because Maven downloads dependencies.
 
@@ -138,7 +138,7 @@ If you commit from the WSL terminal, the steps above are enough.
 | Build fails at checkout: `dubious ownership` | Run `git config --global --add safe.directory '*'` in the terminal that started Jenkins, then rebuild. |
 | Checkout fails: "local" repository not allowed | Jenkins was not started with `jenkins/local/start-jenkins.sh`, which sets the flag. Restart it with the script. |
 | `publishHTML` not found | The HTML Publisher plugin is missing (Step 4.4). |
-| `TypeTag :: UNKNOWN` in the build | `JAVA_HOME_17` points to a JDK that is not 17. Fix the build parameter. |
+| `TypeTag :: UNKNOWN` in the build, or "No JDK 17 found" | Install JDK 17 (Step 1) or fill the build parameter `JAVA_HOME_17` with its folder. |
 | Hook prints "could not reach the local Jenkins" | Jenkins is not running, or `JENKINS_URL` is wrong. |
 | Hook runs but no build starts (HTTP 403 or 404 is hidden) | Check the job name `lms-local`, the token `lms-local`, and `JENKINS_USER` / `JENKINS_API_TOKEN`. Test by hand: `curl -i -X POST -u "$JENKINS_USER:$JENKINS_API_TOKEN" "$JENKINS_URL/job/lms-local/buildWithParameters?token=lms-local&BRANCH=main"`. |
 | Bash says `\r: command not found` | The scripts got Windows line endings: `sed -i 's/\r$//' jenkins/hooks/* jenkins/local/*`. |
