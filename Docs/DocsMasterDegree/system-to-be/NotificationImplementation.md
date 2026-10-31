@@ -22,7 +22,7 @@ Report date: 2026-10-30. Scope: reader notifications in ADD.md (US6, US7, US8, U
 - **Later-disabled channel:** a stored channel that is no longer enabled is skipped by the intersection.
 - **Reader with no choice:** a reader who has never chosen a channel receives no notifications; there is no default channel.
 - **Controlling delivery in tests:** class tests control the framework client each channel uses: a mock `JavaMailSender`, and a `MockRestServiceServer` bound to the `RestClient.Builder`.
-- **Test execution:** all automated tests run under Surefire; the `*IT` classes are not selected by the default test selection.
+- **Test execution:** all automated tests run under Surefire; the `*IT` classes are not selected by the default test selection, and the pipelines run them in a stage of their own against Mailpit and Mockoon.
 
 ## REST contract
 
@@ -64,8 +64,8 @@ Machine-readable summary: [NotificationValidation.json](Evidence/NotificationVal
 
 ### Limits of the evidence
 
-- The integration tests against Mailpit, the SMS gateway and Mockoon are not part of these results.
-- The scheduler firing is not part of these results. `ScheduledNotificationCheckIT` covers it as a manual test against Mailpit; the automated tests check that the schedule is registered and call the check directly.
+- The integration tests against Mailpit and Mockoon are not part of these results. Mockoon stands in for the SMS gateway and the webhook receiver, so they do not show an SMS arriving; real SMS delivery is a manual demo.
+- The scheduler firing is not part of these results. `ScheduledNotificationCheckIT` covers it against Mailpit in the pipelines' integration test stage; the automated tests check that the schedule is registered and call the check directly.
 - A restart with a changed value is covered at configuration level; no whole-application restart experiment was run.
 - Collaboration and system tests use the real clock with dates relative to today.
-- With all three channels enabled, an installation must provide `NOTIFICATION_SMS_USERNAME` and `NOTIFICATION_SMS_PASSWORD`, or startup stops. Each deployed environment sets them in `/etc/lms/<env>.env`.
+- The scheduler firing is not part of these results. `ScheduledNotificationCheckIT` covers it against Mailpit in the pipelines' integration test stage; the automated tests check that the schedule is registered and call the check directly.

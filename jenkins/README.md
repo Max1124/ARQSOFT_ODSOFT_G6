@@ -16,7 +16,7 @@ Each pipeline shows three top-level stages, so the owner of a failure is obvious
 |---|---|---|---|
 | Lending policies (Guilherme) | Guilherme | `-Plending` | tests + JaCoCo, SpotBugs, PIT |
 | Bibliographic sources (Max1124) | Max1124 | `-Pbibliographic` | tests + JaCoCo, PIT |
-| Reader notifications (AlexandreMouraCosta) | AlexandreMouraCosta | `-Pnotification` | tests + JaCoCo, PIT |
+| Reader notifications (AlexandreMouraCosta) | AlexandreMouraCosta | `-Pnotification` | tests + JaCoCo, integration tests, PIT |
 
 A failing area does not stop the other two from running (each leaf is wrapped in `catchError`); the build ends red, and
 the archive and deploy stages are skipped. To change what an area runs, edit its Maven profile in `pom.xml` and its
@@ -87,10 +87,11 @@ Stop it with Ctrl+C. Next time repeat this step; your jobs and settings are kept
    `~/jenkins-local/secrets/initialAdminPassword`. Paste it.
 2. Choose "Install suggested plugins" and wait.
 3. Create your admin user (any name and password), keep the suggested URL, finish.
-4. Install one more plugin: Manage Jenkins, Plugins, Available plugins, search **HTML Publisher**, tick it, Install,
-   and tick "Restart Jenkins when installation is complete".
+4. Install two more plugins: Manage Jenkins, Plugins, Available plugins, search **HTML Publisher** and
+   **Lockable Resources**, tick them, Install, and tick "Restart Jenkins when installation is complete".
 
 #### Step 5. Create the `lms-local` job (once)
+The Azure Jenkins needs the plugins from Step 4 too, for pipelines 2 and 3. `deploy/setup-vm.sh` installs Node and Mailpit.
 
 1. Dashboard, New Item, name `lms-local`, type **Pipeline**, OK.
 2. Tick **This project is parameterized**, Add Parameter, String Parameter: name `BRANCH`, default `main`.
@@ -187,3 +188,44 @@ Starts Jenkins hidden when you log in, and lets you commit from Windows tools su
 5. Commit from your Git tool. In IntelliJ, keep **Run Git hooks** ticked. A new build appears in `lms-local` within seconds.
 
 To stop Jenkins, run `Stop-ScheduledTask LmsJenkinsWsl`. If the page still responds, run `wsl --terminate Ubuntu`, which stops all of Ubuntu.
+
+
+#### Notification integration tests (Mailpit and Mockoon)
+
+The `Notifications: integration tests` stage needs Node 18+, Mailpit and the **Lockable Resources** Jenkins plugin. Install them once, on the system that runs Jenkins. You don't need to install or start Mockoon: `jenkins/run-notification-its.sh` fetches Mockoon CLI with `npx` (internet needed the first time), starts Mailpit and Mockoon, and stops both when the tests end. No real email or SMS is sent.
+
+**Windows (inside WSL Ubuntu, not PowerShell)**
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs
+sudo bash < <(curl -sL https://raw.githubusercontent.com/axllent/mailpit/develop/install.sh)
+which node npx mailpit
+```
+
+All three paths must be Linux paths. A `/mnt/c/...` path is the Windows copy and won't work.
+
+**macOS**
+
+```bash
+brew install node mailpit
+which node npx mailpit
+```
+
+If Jenkins was already running, restart it from a new terminal so it picks up the new tools.
+
+**Jenkins plugin:** Manage Jenkins, Plugins, Available plugins, then install **Lockable Resources**.
+
+**Run the tests without Jenkins**, from the repository root (in Ubuntu on Windows):
+
+```bash
+JAVA_HOME=$(bash jenkins/local/find-jdk17.sh) bash jenkins/run-notification-its.sh
+```
+
+| Symptom | Fix |
+|---|---|
+| `No such DSL method 'lock'` | Install the Lockable Resources plugin. |
+| `Node is not installed` or `Mailpit is not installed` | Install it as above, on the system that runs Jenkins. |
+| `Port 1025`, `8025` or `8027 is already in use` | Close your own Mailpit or Mockoon, then rebuild. |
+| `./mvnw: /bin/sh^M: bad interpreter` when running by hand in WSL | Run `sed -i 's/\r$//' mvnw .mvn/wrapper/maven-wrapper.properties`. |
+| SMS tests fail with `Connection refused` | `notification.sms.gateway-url` in `src/test/resources/application.properties` must be `http://localhost:8027/message`. |

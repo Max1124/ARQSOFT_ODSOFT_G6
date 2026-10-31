@@ -38,11 +38,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * The schedule registered at setup firing the periodic check, with no direct call from the test. The check runs on
- * the scheduler thread, so the test data is committed instead of rolled back, in a database of its own that is
- * discarded with the context. Delivers to Mailpit on this machine (SMTP on localhost:1025, API on localhost:8025);
- * every firing on the notice day sends the notice again, so at least one message is expected.
- * Not part of ./mvnw test; run with ./mvnw test -Dtest=ScheduledNotificationCheckIT while Mailpit is running.
+ * Integration of the SMS channel over HTTP. In the pipelines, Mockoon stands in for SMS Gateway for Android, at
+ * notification.sms.gateway-url in the test application.properties, and no SMS is sent. Not part of ./mvnw test; the
+ * pipelines run it with jenkins/run-notification-its.sh.
+ * For a demo with the real gateway, set its address and credentials in the test application.properties, keep Mockoon running, and run only dueDateNoticeIsAcceptedByThePhoneGatewayForTheReadersNumber; the SMS arriving is checked on the phone.
+ * Not part of ./mvnw test; the pipelines run it with jenkins/run-notification-its.sh, which starts Mailpit.
  */
 @ExtendWith(OutputCaptureExtension.class)
 @Transactional(propagation = Propagation.NOT_SUPPORTED)

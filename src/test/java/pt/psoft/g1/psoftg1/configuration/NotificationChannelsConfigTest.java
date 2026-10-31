@@ -25,7 +25,7 @@ import static org.mockito.Mockito.mock;
 /**
  * Setup-time channel composition (TST-NOT-03): starts only the notification configuration with test properties.
  * The repository and the lending service are doubles and no channel sends anything, since only startup is exercised.
- * The SMS gateway credentials, which an installation provides through environment variables, are given as test values.
+ * The SMS gateway settings, which an installation provides in application.properties, are given as test values.
  */
 class NotificationChannelsConfigTest {
 

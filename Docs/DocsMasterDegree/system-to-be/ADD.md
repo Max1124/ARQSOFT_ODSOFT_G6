@@ -230,7 +230,7 @@ This scenario specifies runtime selection behaviour, rather than setup-time reco
 | Environment | Development and continuous integration, without email/SMS providers or webhook receivers. |
 | Artifact | Reader notification module: dispatcher and channel implementations. |
 | Response | Channels are replaced by test doubles that record the calls. Tests assert which channels were used, for which reader, and with what content. |
-| Response measure | 0 real messages sent by the default test suite and the CI pipeline; the integration tests added after implementation are a separate manual step (see [Testability.md](Testability.md)). At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
+| Response measure | 0 real messages sent by the default test suite and the CI pipeline; the integration tests added after implementation run in a separate pipeline stage against Mailpit and Mockoon, and real SMS delivery is a manual demo (see [Testability.md](Testability.md)). At least 80% branch coverage on the dispatcher and channel selection logic. Each scenario is checked by at least one automated test. |
 
 #### QAS11 – Testing lending policies independently
 **Related requirements:** US10, US11, US13, US14

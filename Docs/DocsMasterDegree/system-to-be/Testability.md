@@ -148,7 +148,7 @@ Question: how can notification delivery be observed in tests without sending rea
 | A — Replace the channels with a recording double of `NotificationService` | Consumers depend only on `NotificationService`; tests inject a double that records reader, channel and content. | No new production element; follows EXT-NOT-03; simple assertions on who was notified; 0 real messages. | Does not execute the real channel implementations, which need their own tests. |
 | B — Replace only the delivery client inside each channel | Each channel receives its mail/SMS/HTTP client by injection; tests replace that client. | Executes the real channel, including message building and contact lookup. | Needs one injectable delivery boundary per mechanism; consumer tests still depend on real channels. |
 | C — Use real providers with a test account | Tests send real messages to a test mailbox, number or receiver. | Exercises real delivery. | Violates 0 real messages (QAS10); slow, non-repeatable, depends on external services. |
-| D — Non-sending unit tests plus actual integration tests (added after implementation) | The default suite and CI follow A and send nothing. Separate integration tests, run by hand, deliver through the actual mechanisms. | The automated suite keeps 0 real messages and repeatable results, and real delivery is also exercised. | The integration tests need local services and a phone, are not run by CI, and must be maintained separately. |
+| D — Non-sending unit tests plus actual integration tests (added after implementation) | The default suite and CI follow A and send nothing. Separate integration tests,pipelines run them against Mailpit and Mockoon, and real SMS is a manual demo, deliver through the actual mechanisms. | The automated suite keeps 0 real messages and repeatable results, and real delivery is also exercised. | The integration tests need local services and a phone, are not run by CI, and must be maintained separately. |
 
 ### Selected alternative — A
 
@@ -235,7 +235,7 @@ Dependency Injection, Isolation and Mocking (Tactics (vi)) put these into practi
 | CON-TST-5 | Preserve domain invariants while making dependencies explicit; no blanket mocking or weakening validation for coverage. | Proposed design safeguard |
 | CON-TST-6 | Lending tests do not depend on the date they run; boundary dates are fixed through the injected clock. | QAS11 |
 | CON-TST-7 | Expected values for behaviour the specification leaves open (Adaptive count, renewal, history window) follow the design and say so in the test; a change of decision changes those tests only. | CON-LP-3 |
-| CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. The integration tests added after implementation are a separate manual step (Alternative D). | QAS10 |
+| CON-TST-8 | Notification tests send 0 real messages; no real email, SMS or webhook provider is reachable from any automated test. The integration tests added after implementation are ran in pipelines against Mailpit and Mockoon, and real SMS is a manual demo (Alternative D). | QAS10 |
 | CON-TST-9 | Tests depending on undefined notification behaviour (channel failure, webhook target, behaviour with no enabled channel, schedule of the due-date and overdue check) are written once those are decided; no expected value assumes an answer. | Extensibility.md and Configurability.md pending decisions |
 | CON-TST-10 | A collaboration or system test is not written, and does not count as evidence, for a component whose included production classes lack passing class-level tests. Class tests precede integration tests in each iteration. | Reported colleague guidance; unit-versus-integration material |
 | CON-TST-11 | Every seam introduced for testability (clock, parameter objects, port, decision type) must also serve the production design; no test-only methods or flags in production code, and no loosening of `Lending` invariants. | CON-TST-5, CON-LP-1 |
@@ -384,7 +384,7 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 - Existing JUnit/Mockito facilities are candidates for class tests; Spring test support for real collaboration. Select a local HTTP double when provider-client boundaries are finalized.
 - Surefire executes the configured test selection; Failsafe can separate integration execution if explicitly configured. A test filename alone is not SUT evidence.
 - JaCoCo measures exercised code. The reported final target is at least 85%; line coverage is the current assumption and measurement scope still needs confirmation. QAS9's 80% branch target is a separate group proposal.
-- Notifications: all automated tests run under Surefire through the `notification` Maven profile, and the Jenkins pipeline runs that profile's tests and mutation analysis. The integration test classes (`*IT`) are not selected by the default test selection.
+- Notifications: all automated tests run under Surefire through the `notification` Maven profile, and the Jenkins pipeline runs that profile's tests and mutation analysis. The integration test classes (`*IT`) are not selected by the default test selection. CI/CD pipelines have their own stage for integration tests.
 - PIT mutation testing (pitest-maven 1.15.8) is configured in `pom.xml` and run on demand, not in the default build, on the lending policy package, `lendingmanagement.model` and `bookmanagement.model`. The `notification` profile targets the notification services, `NotificationPreferenceService` and `LendingServiceImpl` (excluding its methods unrelated to dispatch). Surviving mutants are not failing functional tests; no score threshold is required (the professor does not ask for 100%).
 - Tests of error paths must pass when expected rejection occurs. No rule accepting integration failures is set here: any faculty-required tolerance needs a separately agreed criterion.
 
@@ -485,13 +485,13 @@ For lending: done in dependency order (clock, parameter objects, policies and ru
 
 After the notification implementation, integration tests against the actual delivery mechanisms were deemed necessary to test the program (Alternative D in Step 4). They are not part of the design iteration above.
 
-They are separate from the automated evidence: the default test selection does not pick them up, and the Jenkins pipeline does not run them, so the default suite and CI still send 0 real messages (CON-TST-8). Each one is run by hand, once the service it needs is available:
+They are separate from the automated evidence: all three pipelines run them through jenkins/run-notification-its.sh, a failure blocks deploys, and CI sends 0 real messages:
 
 | Test class | Mechanism | What is delivered | What the test checks | What is checked by hand |
 |---|---|---|---|---|
 | `EmailNotificationDeliveryIT` | Mailpit on this machine (SMTP on port 1025, API on port 8025) | A message kept by Mailpit, not delivered to any mailbox | Recipient, sender, subject and content, read back through the Mailpit API | Nothing |
-| `SmsNotificationDeliveryIT` | SMS Gateway for Android, in local server mode on a phone; address and credentials come from the environment of the shell, as described in the test class | One real SMS | The gateway accepts the request (no channel failure is logged) | The SMS arriving on the phone |
-| `WebhookNotificationDeliveryIT` | Mockoon on this machine (port 8027, a `POST /webhook` route answering 200) | A request to the local receiver | The reader's URL is stored, and the receiver answers 2xx (no channel failure is logged) | The payload, in the Mockoon Logs tab |
+| `SmsNotificationDeliveryIT` | Mockoon standing in for SMS Gateway for Android (port 8027, a `POST /message` route answering 200) | A request to the local receiver; no SMS | One test checks that one request reached the route with the reader's number and the lending, read back through the Mockoon admin API. The other checks that no channel failure is logged | Nothing. In the manual demo, the SMS arriving on the phone |
+| `WebhookNotificationDeliveryIT` | Mockoon (port 8027, a `POST /webhook` route answering 200) | A request to the local receiver | One test checks that the reader's URL is stored and no channel failure is logged. The other checks that one request reached the route with the event and the lending, read back through the Mockoon admin API | Nothing |
 | `ScheduledNotificationCheckIT` | Mailpit on this machine (SMTP on port 1025, API on port 8025), with the check scheduled every 2 seconds | A message kept by Mailpit | The schedule fires the check with no direct call, and the due-date notice reaches Mailpit | Nothing |
 
 Each test registers a reader through the application's own service, logs in with a real JWT, has a librarian lend a book through the API, chooses the channel through the API and then runs the periodic check directly.
@@ -502,4 +502,4 @@ Run one at a time, for example:
 .\mvnw.cmd test -Dtest=EmailNotificationDeliveryIT
 ```
 
-Limits: only the due-date notice is exercised, not the overdue notice. Mailpit and Mockoon, and their configuration, are not part of the repository. SMS notifications can  only be tested if the machine is in the same network as the SMS server.
+Limits: only the due-date notice is exercised, not the overdue notice. Mockoon stands in for the SMS gateway and the webhook receiver, so these tests show that the request reaches the expected address with the expected content, not that an SMS arrives or how a real receiver behaves. Real SMS requires a machine that can reach the SMS server. The Mockoon routes are in `src/test/resources/mockoon/notification-mocks.json`.

@@ -11,11 +11,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Integration with a real webhook receiver: Mockoon on this machine, environment on port 8027 with a
- * POST /webhook route answering 200. The reader first registers that URL as their webhook through the API;
- * the webhook channel then posts the event to it. Mockoon answering 2xx is checked here (any other answer is
- * logged as a failed channel); the payload is visible in Mockoon's Logs tab.
- * Not part of ./mvnw test; run with ./mvnw test -Dtest=WebhookNotificationDeliveryIT while Mockoon is running.
+ * Integration of the webhook channel over HTTP, with Mockoon as the receiver: port 8027, a POST /webhook route
+ * answering 200. The reader first registers that URL through the API, and the channel then posts the event to it.
+ * One test also reads the request back from Mockoon. Not part of ./mvnw test; the pipelines run it with
+ * jenkins/run-notification-its.sh.
  */
 @TestPropertySource(properties = {"notification.channels=webhook", "notification.due-date-notice-days=15"})
 class WebhookNotificationDeliveryIT extends NotificationDeliveryITSupport {

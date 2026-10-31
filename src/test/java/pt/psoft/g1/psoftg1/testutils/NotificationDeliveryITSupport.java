@@ -34,9 +34,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.awaitility.Awaitility.await;
 
 /**
- * Shared set-up of the delivery integration tests (*IT). Unlike the other tests, these deliver through the real
- * external systems (Mailpit, the SMS Gateway for Android phone, Mockoon), so they are not part of {@code ./mvnw test}:
- * the default test selection only picks *Test classes. Run one explicitly, e.g. {@code ./mvnw test -Dtest=EmailNotificationDeliveryIT}.
+ * Shared set-up of the delivery integration tests (*IT). Unlike the other tests, these deliver over the network to
+ * local services: Mailpit for email, Mockoon for the SMS gateway and the webhook. So they are not part of
+ * {@code ./mvnw test}, whose default test selection only picks *Test classes. The pipelines run them with
+ * {@code bash jenkins/run-notification-its.sh}, which starts and stops those services.
  * <p>
  * Each test registers the reader through the application's own registration service (so reader number, ids and
  * version are generated as the application does), logs in with a real JWT, has a librarian lend a book through the

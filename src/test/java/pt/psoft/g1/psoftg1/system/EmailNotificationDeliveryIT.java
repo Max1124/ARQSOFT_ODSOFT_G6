@@ -19,7 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Integration with a real SMTP server: Mailpit on this machine (SMTP on localhost:1025, API on localhost:8025).
  * Mailpit keeps the message instead of delivering it, and the test reads it back through Mailpit's API.
- * Not part of ./mvnw test; run with ./mvnw test -Dtest=EmailNotificationDeliveryIT while Mailpit is running.
+ * Not part of ./mvnw test; the pipelines run it with jenkins/run-notification-its.sh, which starts Mailpit.
  */
 @TestPropertySource(properties = {"notification.channels=email", "notification.due-date-notice-days=15",
         "notification.email.smtp.host=localhost", "notification.email.smtp.port=1025",
