@@ -38,40 +38,48 @@ Committing does nothing by itself. A commit starts pipeline 1 only when all thre
 your machine, a job named `lms-local` in it, and the git hook. Do the steps once, in this order. No Docker is needed:
 Jenkins runs from its `jenkins.war` file.
 
-If you only want the same checks without Jenkins, run from the repository (JDK 17):
+If you only want the same checks without Jenkins, run from the repository (with JDK 17 as `JAVA_HOME`):
 `./mvnw -B -Plending verify`, `./mvnw -B -Pbibliographic test`, `./mvnw -B -Pnotification test`.
 
 **Which system?** The Jenkinsfiles use `sh` and `./mvnw`, so Jenkins must run on Linux or macOS.
 On Windows, run Jenkins **inside WSL** (Ubuntu): follow the WSL column. Do not run Jenkins as a native Windows program.
 
-#### Step 1. Install JDK 17
+#### Step 1. Install the two JDKs
 
-| System | Command |
-|---|---|
-| WSL / Ubuntu | `sudo apt update && sudo apt install -y openjdk-17-jdk` |
-| macOS | `brew install openjdk@17` |
-| Windows | Install WSL first (PowerShell as administrator: `wsl --install -d Ubuntu`, restart, open Ubuntu), then use the WSL command inside Ubuntu |
-
-#### Step 2. Point the terminal at JDK 17 (every new terminal)
+Jenkins itself needs **Java 21 or newer**. The project build needs **JDK 17** (Lombok does not compile on newer JDKs).
+The job runs the build with the 17 you give it, so the two do not conflict.
 
 | System | Commands |
 |---|---|
-| WSL / Ubuntu | `export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64` and `export PATH=$JAVA_HOME/bin:$PATH` |
-| macOS | `export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` and `export PATH=$JAVA_HOME/bin:$PATH` |
+| WSL / Ubuntu | `sudo apt update && sudo apt install -y openjdk-17-jdk openjdk-21-jdk` |
+| macOS | `brew install openjdk@17 openjdk@21` |
+| Windows | Install WSL first (PowerShell as administrator: `wsl --install -d Ubuntu`, restart, open Ubuntu), then use the WSL command inside Ubuntu |
 
-Check with `java -version`: it must say 17. Put the two lines in `~/.bashrc` (WSL) or `~/.zshrc` (macOS) to skip this step later.
+If you already have Java 21 or 25 (check with `java -version`), you only need the 17 one.
+
+#### Step 2. Find the paths of the two JDKs
+
+| System | JDK 17 (for the build) | JDK 21 or newer (for Jenkins) |
+|---|---|---|
+| WSL / Ubuntu | `/usr/lib/jvm/java-17-openjdk-amd64` | `/usr/lib/jvm/java-21-openjdk-amd64` (or run `ls /usr/lib/jvm` and use the folder of the 25 you have) |
+| macOS | `/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home` | `/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home` |
+
+Note both. The first goes into the job (Step 6); the second is `JENKINS_JAVA_HOME` in the next step.
 
 #### Step 3. Start Jenkins
 
-From the repository root, in a terminal you leave open:
+From the repository root, in a terminal you leave open (WSL example; use your own path from Step 2):
 
 ```
+export JENKINS_JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
 bash jenkins/local/start-jenkins.sh
 ```
 
+If your normal `java -version` already says 21 or higher, you can skip the `export`.
+
 The first start downloads `jenkins.war` (about 90 MB) into `~/jenkins-local` and takes about a minute. When the log says
 "Jenkins is fully up and running", open <http://localhost:9090>. On WSL the page also opens from the Windows browser.
-Stop it with Ctrl+C. Next time, repeat Steps 2 and 3; your jobs and settings are kept in `~/jenkins-local`.
+Stop it with Ctrl+C. Next time repeat this step; your jobs and settings are kept in `~/jenkins-local`.
 
 #### Step 4. First-time Jenkins setup (once)
 
@@ -98,8 +106,7 @@ Stop it with Ctrl+C. Next time, repeat Steps 2 and 3; your jobs and settings are
 #### Step 6. Run it once by hand
 
 1. Open the job, **Build with Parameters**.
-2. Set `JAVA_HOME_17` to your JDK 17 folder (the value from Step 2: for WSL `/usr/lib/jvm/java-17-openjdk-amd64`;
-   for macOS the `/opt/homebrew/...` path). Leave `RUN_MUTATION` unticked; mutation testing is slow.
+2. Set `JAVA_HOME_17` to your JDK 17 folder from Step 2 (WSL: `/usr/lib/jvm/java-17-openjdk-amd64`; macOS: the `/opt/homebrew/opt/openjdk@17/...` path). Leave `RUN_MUTATION` unticked; mutation testing is slow.
 3. Build. Open the build, **Console Output**, and watch the stages. A green build means the setup works.
    The first run is slow because Maven downloads dependencies.
 
@@ -125,7 +132,7 @@ If you commit from the WSL terminal, the steps above are enough.
 
 | Symptom | Fix |
 |---|---|
-| `Java 25 found; Jenkins needs 17 or 21` | Redo Step 2 in this terminal. |
+| `Java 17 found; Jenkins needs 21 or newer` (or Jenkins says it is older than the minimum) | Set `JENKINS_JAVA_HOME` to a JDK 21+ folder before running the script (Step 3). The build still uses 17 through `JAVA_HOME_17`. |
 | `Address already in use` | Another Jenkins or program uses 9090. Stop it, or run `JENKINS_PORT=9191 bash jenkins/local/start-jenkins.sh` and use that port in the hook URL. |
 | Download of `jenkins.war` fails | Download it from <https://www.jenkins.io/download/> (Generic Java package, war) and save it as `~/jenkins-local/jenkins.war`. |
 | Build fails at checkout: `dubious ownership` | Run `git config --global --add safe.directory '*'` in the terminal that started Jenkins, then rebuild. |
