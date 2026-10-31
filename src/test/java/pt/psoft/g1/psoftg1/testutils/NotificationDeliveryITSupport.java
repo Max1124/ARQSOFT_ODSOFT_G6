@@ -14,12 +14,16 @@ import pt.psoft.g1.psoftg1.lendingmanagement.services.LendingService;
 import pt.psoft.g1.psoftg1.readermanagement.model.ReaderDetails;
 import pt.psoft.g1.psoftg1.readermanagement.services.CreateReaderRequest;
 import pt.psoft.g1.psoftg1.readermanagement.services.ReaderService;
+import org.springframework.web.client.RestClient;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.fail;
@@ -27,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.awaitility.Awaitility.await;
 
 /**
  * Shared set-up of the delivery integration tests (*IT). Unlike the other tests, these deliver through the real
@@ -45,6 +50,7 @@ public abstract class NotificationDeliveryITSupport extends ApiIntegrationTestSu
     protected static final String READER_EMAIL = "1211225@isep.ipp.pt";
     protected static final String READER_PHONE = "924470976"; // stored without the country code, as the domain requires
     private static final String LIBRARIAN_EMAIL = "bibliotecaria.integracao@example.com";
+    private static final String MOCKOON_LOGS = "http://localhost:8027/mockoon-admin/logs";
 
     @Autowired
     private ReaderService readerService;
@@ -62,14 +68,6 @@ public abstract class NotificationDeliveryITSupport extends ApiIntegrationTestSu
             socket.connect(new InetSocketAddress(host, port), 2000);
         } catch (IOException e) {
             fail(service + " is not listening on " + host + ":" + port + ". " + hint);
-        }
-    }
-
-    /** Fails with a clear message when an environment variable the test needs is not set. */
-    protected static void requireEnvironmentVariable(String name) {
-        final String value = System.getenv(name);
-        if (value == null || value.isBlank()) {
-            fail("Environment variable " + name + " is not set in the shell that runs the test.");
         }
     }
 
@@ -146,4 +144,31 @@ public abstract class NotificationDeliveryITSupport extends ApiIntegrationTestSu
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"channels\":" + channelsJson + ",\"webhookUrl\":\"" + webhookUrl + "\"}"));
     }
+
+    /** Forgets the requests Mockoon has recorded, so the next check only sees the ones of this test. */
+    protected static void clearMockoonRequests() {
+        mockoonLogs().post().uri("/purge").retrieve().toBodilessEntity();
+    }
+
+    /** No logged failure also holds when nothing was sent, so the request itself is read back from Mockoon. */
+    protected static void assertMockoonAnsweredOneRequest(String path, String... expectedInBody) {
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            final String json = mockoonLogs().get().uri("?limit=100").retrieve().body(String.class);
+            final List<Map<String, Object>> requests = JsonPath.read(json, "$[?(@.request.urlPath == '" + path + "')]");
+            assertThat(requests).singleElement().satisfies(request -> {
+                assertThat(JsonPath.<Integer>read(request, "$.response.statusCode")).isEqualTo(200);
+                assertThat(JsonPath.<String>read(request, "$.request.body")).contains(expectedInBody);
+            });
+        });
+    }
+
+    private static RestClient mockoonLogs() {
+        final String token = System.getenv("MOCKOON_ADMIN_TOKEN");
+        if (token == null || token.isBlank()) {
+            fail("Environment variable MOCKOON_ADMIN_TOKEN is not set: it must match Mockoon's --admin-api-token.");
+        }
+        return RestClient.builder().baseUrl(MOCKOON_LOGS).defaultHeader("Authorization", "Bearer " + token).build();
+    }
+
+
 }

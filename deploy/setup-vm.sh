@@ -20,9 +20,6 @@ for env in "${!PORTS[@]}"; do
   cat > "/etc/lms/${env}.env" <<EOF
 SERVER_PORT=${PORTS[$env]}
 SPRING_PROFILES_ACTIVE=${env},bootstrap
-NOTIFICATION_SMS_GATEWAY_URL=http://193.136.56.49:8080/message
-NOTIFICATION_SMS_USERNAME=sms
-NOTIFICATION_SMS_PASSWORD=7wGimSzn
 EOF
 done
 

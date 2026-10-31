@@ -158,3 +158,32 @@ Open the existing job `lms-pipeline` and change Script Path from `Jenkinsfile` t
 ## Branches
 
 The pipelines assume feature work happens on `feature/<name>` branches and reaches `main` through a pull request.
+
+
+#### Optional: Windows without opening WSL
+
+Starts Jenkins hidden when you log in, and lets you commit from Windows tools such as IntelliJ. Do Steps 1 to 7 in WSL first.
+
+1. In Ubuntu, from the repository root, copy the start script to your home folder with LF line endings:
+   ```
+   cp jenkins/local/start-jenkins.sh ~/start-jenkins.sh && sed -i 's/\r$//' ~/start-jenkins.sh
+   ```
+   If `start-jenkins.sh` changes later, repeat this step.
+2. In PowerShell, set the hook variables, then fully close and reopen your Git tool:
+   ```
+   setx JENKINS_URL http://localhost:9090
+   setx JENKINS_USER <your Jenkins user>
+   setx JENKINS_API_TOKEN <the token>
+   ```
+3. Stop any Jenkins you started by hand. Then, in PowerShell as administrator, create and start the task. If your distro is not `Ubuntu` (check with `wsl -l -v`) or Jenkins uses another JDK 21+, change those values:
+   ```
+   $a = New-ScheduledTaskAction -Execute "conhost.exe" -Argument "--headless wsl.exe -d Ubuntu --cd ~ -- env JENKINS_JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64 bash start-jenkins.sh"
+   $t = New-ScheduledTaskTrigger -AtLogOn -User $env:USERNAME
+   $s = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+   Register-ScheduledTask LmsJenkinsWsl -Action $a -Trigger $t -Settings $s
+   Start-ScheduledTask LmsJenkinsWsl
+   ```
+4. After about a minute, check that <http://localhost:9090> opens. No window appears.
+5. Commit from your Git tool. In IntelliJ, keep **Run Git hooks** ticked. A new build appears in `lms-local` within seconds.
+
+To stop Jenkins, run `Stop-ScheduledTask LmsJenkinsWsl`. If the page still responds, run `wsl --terminate Ubuntu`, which stops all of Ubuntu.

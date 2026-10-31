@@ -96,6 +96,13 @@ pipeline {
                         }
                     }
                 }
+                stage('Notifications: integration tests') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationIntegrationTests() }
+                        }
+                    }
+                }
                 stage('Notifications: mutation testing') {
                     when { expression { params.RUN_MUTATION } }
                     steps {

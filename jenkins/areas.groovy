@@ -74,6 +74,19 @@ def notificationTests() {
     }
 }
 
+def notificationIntegrationTests() {
+    try {
+        // Fixed ports (Mailpit, Mockoon), and the pipelines of one Jenkins can run at the same time.
+        lock('notification-its') {
+            sh 'bash jenkins/run-notification-its.sh'
+        }
+    } finally {
+        junit testResults: 'target/surefire-reports/TEST-*IT.xml', allowEmptyResults: true
+        archiveArtifacts artifacts: 'target/surefire-reports/TEST-*IT.xml,target/notification-its/**', allowEmptyArchive: true
+    }
+}
+
+
 def notificationMutation() {
     try {
         sh "${env.MVN_NOT} test-compile org.pitest:pitest-maven:mutationCoverage"

@@ -1,0 +1,96 @@
+{
+  "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c01",
+  "lastMigration": 33,
+  "name": "notification-mocks",
+  "endpointPrefix": "",
+  "latency": 0,
+  "port": 8027,
+  "hostname": "",
+  "folders": [],
+  "rootChildren": [
+    { "type": "route", "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c02" },
+    { "type": "route", "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c03" }
+  ],
+  "proxyMode": false,
+  "proxyHost": "",
+  "proxyRemovePrefix": false,
+  "tlsOptions": {
+    "enabled": false,
+    "type": "CERT",
+    "pfxPath": "",
+    "certPath": "",
+    "keyPath": "",
+    "caPath": "",
+    "passphrase": ""
+  },
+  "cors": false,
+  "headers": [],
+  "proxyReqHeaders": [],
+  "proxyResHeaders": [],
+  "data": [],
+  "callbacks": [],
+  "routes": [
+    {
+      "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c02",
+      "type": "http",
+      "documentation": "SMS Gateway for Android: the SMS channel posts each message here",
+      "method": "post",
+      "endpoint": "message",
+      "responses": [
+        {
+          "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c12",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Accepted",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    },
+    {
+      "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c03",
+      "type": "http",
+      "documentation": "Webhook receiver: the URL the reader registers in WebhookNotificationDeliveryIT",
+      "method": "post",
+      "endpoint": "webhook",
+      "responses": [
+        {
+          "uuid": "6f0c2a54-3b1e-4d7a-9c58-1e2f7a9b0c13",
+          "body": "",
+          "latency": 0,
+          "statusCode": 200,
+          "label": "Received",
+          "headers": [],
+          "bodyType": "INLINE",
+          "filePath": "",
+          "databucketID": "",
+          "sendFileAsBody": false,
+          "rules": [],
+          "rulesOperator": "OR",
+          "disableTemplating": true,
+          "fallbackTo404": false,
+          "default": true,
+          "crudKey": "id",
+          "callbacks": []
+        }
+      ],
+      "responseMode": null,
+      "streamingMode": null,
+      "streamingInterval": 0
+    }
+  ]
+}

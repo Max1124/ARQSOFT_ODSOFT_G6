@@ -34,7 +34,7 @@ class NotificationChannelsConfigTest {
             .withBean(ReaderRepository.class, () -> mock(ReaderRepository.class))
             .withBean(LendingService.class, () -> mock(LendingService.class))
             .withBean(RestClient.Builder.class, RestClient::builder)
-            .withPropertyValues("notification.sms.username=test-user", "notification.sms.password=test-password");
+            .withPropertyValues("notification.sms.gateway-url=test-url","notification.sms.username=test-user", "notification.sms.password=test-password");
 
     private static List<String> scheduledCronExpressions(ApplicationContext context) {
         return context.getBean(ScheduledTaskHolder.class).getScheduledTasks().stream()

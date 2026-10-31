@@ -40,4 +40,15 @@ class WebhookNotificationDeliveryIT extends NotificationDeliveryITSupport {
 
         assertChannelDidNotFail(output, "webhook");
     }
+
+    @Test
+    void dueDateEventReachesTheMockoonWebhookUrl(CapturedOutput output) throws Exception {
+        choose("[\"webhook\"]", MOCKOON_WEBHOOK).andExpect(status().isOk());
+        clearMockoonRequests();
+
+        lendingService.checkDueAndOverdueLendings();
+
+        assertChannelDidNotFail(output, "webhook");
+        assertMockoonAnsweredOneRequest("/webhook", "DUE_DATE_APPROACHING", lendingNumber);
+    }
 }
