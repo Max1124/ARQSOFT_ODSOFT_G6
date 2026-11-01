@@ -2,6 +2,7 @@ package pt.psoft.g1.psoftg1.system;
 
 import com.jayway.jsonpath.JsonPath;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
@@ -28,6 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * endpoint, so security, controllers, services, policies, persistence and mapping run together. The only direct
  * set-up is the librarian account (the application has no endpoint to create one) and the catalogue's genre and author.
  */
+@Tag("integration")
 class LendingSystemIT extends ApiIntegrationTestSupport {
     private static final String LIBRARIAN_EMAIL = "maria@example.com";
     private static final String READER_EMAIL = "manuel@example.com";

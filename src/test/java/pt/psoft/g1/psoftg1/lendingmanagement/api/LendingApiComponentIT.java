@@ -1,6 +1,7 @@
 package pt.psoft.g1.psoftg1.lendingmanagement.api;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
@@ -31,6 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Only authentication is simulated; policy values come from library.properties (Standard: 3 active, 15 days,
  * 2 renewals of 7 days; Adaptive: 21/15/7 days; selection: 5 completed in 6 months, 90% on time).
  */
+@Tag("integration")
 class LendingApiComponentIT extends ApiIntegrationTestSupport {
     private static final String LENDINGS = "/api/lendings";
 

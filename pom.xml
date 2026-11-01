@@ -359,6 +359,13 @@
                             <reportsDirectory>${project.build.directory}/pit-reports-notification</reportsDirectory>
                         </configuration>
                     </plugin>
+					<plugin>
+						<groupId>com.github.spotbugs</groupId>
+						<artifactId>spotbugs-maven-plugin</artifactId>
+						<configuration>
+							<onlyAnalyze>pt.psoft.g1.psoftg1.notificationmanagement.-,pt.psoft.g1.psoftg1.configuration.NotificationChannelsConfig,pt.psoft.g1.psoftg1.readermanagement.services.NotificationPreferenceService,pt.psoft.g1.psoftg1.readermanagement.api.ReaderNotificationController</onlyAnalyze>
+						</configuration>
+					</plugin>
                 </plugins>
             </build>
         </profile>
@@ -415,6 +422,11 @@
                         <includes><include>pt/psoft/g1/psoftg1/bibliographicmanagement/**</include></includes>
                     </configuration>
                 </execution></executions>
+            </plugin><plugin>
+                <groupId>com.github.spotbugs</groupId><artifactId>spotbugs-maven-plugin</artifactId>
+                <configuration>
+                    <onlyAnalyze>pt.psoft.g1.psoftg1.bibliographicmanagement.-</onlyAnalyze>
+                </configuration>
             </plugin><plugin>
                 <groupId>org.pitest</groupId><artifactId>pitest-maven</artifactId>
                 <configuration>

@@ -1,5 +1,6 @@
 package pt.psoft.g1.psoftg1.configuration;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.AdaptiveLendingPolicy;
@@ -12,6 +13,7 @@ import java.time.LocalDate;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Collaboration level: real selector, rule, policies and parameters wired from the shipped properties. */
+@Tag("integration")
 class LendingPoliciesConfigTest {
     private static final LocalDate TODAY = LocalDate.of(2026, 3, 10);
     private final ApplicationContextRunner runner = new ApplicationContextRunner().withUserConfiguration(LendingPoliciesConfig.class);

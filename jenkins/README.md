@@ -12,8 +12,8 @@ Each pipeline has three student stages alongside the shared test stages and the 
 
 | Stage | Owner | Maven profile | Inside |
 |---|---|---|---|
-| Lending policies (Guilherme) | Guilherme | `-Plending` | tests + JaCoCo, SpotBugs, PIT |
-| Bibliographic sources (Max1124) | Max1124 | `-Pbibliographic` | tests + JaCoCo, PIT |
+| Lending policies (Guilherme) | Guilherme | `-Plending` | unit tests, integration tests (Spring, API, database; tagged `integration`), JaCoCo, SpotBugs, PIT |
+| Bibliographic sources (Max1124) | Max1124 | `-Pbibliographic` | tests + JaCoCo, SpotBugs, PIT |
 | Reader notifications (AlexandreMouraCosta) | AlexandreMouraCosta | `-Pnotification` | tests + JaCoCo, integration tests, PIT |
 
 A failing area does not stop the other two from running (each leaf is wrapped in `catchError`); the build ends red, and
@@ -307,3 +307,9 @@ bash jenkins/run-global-coverage.sh
 ```
 
 This starts with a clean build, runs all `*Test` and `*IT` classes, and runs the notification delivery and scheduled-check tests with Mailpit/Mockoon. It then merges the coverage data and generates HTML, XML and CSV reports. `bash jenkins/local/verify-checks.sh` also publishes global coverage after its existing checks. The publishing helper rejects missing suite snapshots instead of silently presenting incomplete data as a complete report. PIT is separate from this functional coverage measurement.
+
+### Bibliographic static analysis
+
+All three pipelines run `Bibliographic: static analysis` through `areas.bibliographicStaticAnalysis()`. The `bibliographic` Maven profile restricts SpotBugs findings to `pt.psoft.g1.psoftg1.bibliographicmanagement` and its subpackages. Jenkins archives `target/spotbugsXml-bibliographic.xml` separately from the other student reports. The existing non-blocking policy for SpotBugs findings is unchanged.
+
+To run it manually with Java 17: `./mvnw -B -Pbibliographic compile spotbugs:spotbugs`. The manual command writes `target/spotbugsXml.xml`; the Jenkins helper copies it to the bibliographic report filename.

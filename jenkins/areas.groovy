@@ -5,10 +5,23 @@
 
 // ---- Lending policies --------------------------------------------------------------------------------------------
 
-def lendingTests() {
+def lendingUnitTests() {
     try {
         sh 'rm -f target/jacoco.exec'
-        sh "${env.MVN} verify"
+        // Lending tests that start Spring or call the API are tagged "integration" and run in the next stage.
+        sh "${env.MVN} verify -DexcludedGroups=integration"
+    } finally {
+        saveCoverage('target/jacoco.exec', 'lending')
+        junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+    }
+}
+
+def lendingIntegrationTests() {
+    try {
+        // Own report folder per stage, so the unit results are not published twice.
+        sh 'rm -rf target/surefire-reports'
+        // jacoco.exec from the unit stage is kept, so the report published below covers both stages.
+        sh "${env.MVN} test -Dgroups=integration"
     } finally {
         saveCoverage('target/jacoco.exec', 'lending')
         junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
@@ -46,6 +59,15 @@ def bibliographicTests() {
         publishHTML(target: [reportDir: 'target/site/jacoco-bibliographic', reportFiles: 'index.html',
                              reportName: 'JaCoCo (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
         archiveArtifacts artifacts: 'target/surefire-reports-bibliographic/**,target/site/jacoco-bibliographic/**,target/jacoco-bibliographic.exec', allowEmptyArchive: true
+    }
+}
+
+def bibliographicStaticAnalysis() {
+    try {
+        sh "${env.MVN_BIB} compile spotbugs:spotbugs"
+        sh 'cp target/spotbugsXml.xml target/spotbugsXml-bibliographic.xml'
+    } finally {
+        archiveArtifacts artifacts: 'target/spotbugsXml-bibliographic.xml', allowEmptyArchive: true
     }
 }
 
@@ -147,6 +169,15 @@ def globalCoverage() {
         publishHTML(target: [reportDir: 'target/site/jacoco-global', reportFiles: 'index.html',
                              reportName: 'JaCoCo (global)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
         archiveArtifacts artifacts: 'target/site/jacoco-global/**,target/jacoco-global.exec,target/coverage-data/*.exec', allowEmptyArchive: true
+    }
+}
+
+def notificationStaticAnalysis() {
+    try {
+        sh "${env.MVN_NOT} spotbugs:spotbugs"
+        sh 'cp target/spotbugsXml.xml target/spotbugsXml-notification.xml'
+    } finally {
+        archiveArtifacts artifacts: 'target/spotbugsXml-notification.xml', allowEmptyArchive: true
     }
 }
 

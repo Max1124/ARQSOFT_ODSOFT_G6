@@ -55,10 +55,17 @@ pipeline {
 
         stage('Lending policies (Guilherme)') {
             stages {
-                stage('Lending: tests and coverage') {
+                stage('Lending: unit tests') {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            script { areas.lendingTests() }
+                            script { areas.lendingUnitTests() }
+                        }
+                    }
+                }
+                stage('Lending: integration tests') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingIntegrationTests() }
                         }
                     }
                 }
@@ -93,6 +100,13 @@ pipeline {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             script { areas.bibliographicIntegrationTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicStaticAnalysis() }
                         }
                     }
                 }
@@ -131,6 +145,13 @@ pipeline {
                         }
                     }
                 }
+                stage('Notification: static analysis') {
+                     steps {
+                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                             script { areas.notificationStaticAnalysis() }
+                         }
+                     }
+                }
             }
         }
 
@@ -149,10 +170,10 @@ pipeline {
             }
         }
 
-        stage('Deploy to dev') {
+        stage('Deploy to staging') {
             when { expression { currentBuild.currentResult == 'SUCCESS' } }
             steps {
-                sh "deploy/deploy.sh dev ${JAR}"
+                sh "deploy/deploy.sh uat ${JAR}"
             }
         }
     }

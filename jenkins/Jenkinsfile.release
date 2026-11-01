@@ -61,10 +61,17 @@ pipeline {
 
         stage('Lending policies (Guilherme)') {
             stages {
-                stage('Lending: tests and coverage') {
+                stage('Lending: unit tests') {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                            script { areas.lendingTests() }
+                            script { areas.lendingUnitTests() }
+                        }
+                    }
+                }
+                stage('Lending: integration tests') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.lendingIntegrationTests() }
                         }
                     }
                 }
@@ -102,6 +109,13 @@ pipeline {
                         }
                     }
                 }
+                stage('Bibliographic: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicStaticAnalysis() }
+                        }
+                    }
+                }
                 stage('Bibliographic: mutation testing') {
                     when { expression { params.RUN_MUTATION } }
                     steps {
@@ -136,6 +150,13 @@ pipeline {
                             script { areas.notificationMutation() }
                         }
                     }
+                }
+                stage('Notification: static analysis') {
+                     steps {
+                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                             script { areas.notificationStaticAnalysis() }
+                         }
+                     }
                 }
             }
         }
