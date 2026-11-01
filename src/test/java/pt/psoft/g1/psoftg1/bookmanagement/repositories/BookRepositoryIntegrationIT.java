@@ -28,7 +28,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 /** Integration test of the {@link BookRepository} queries against the in-memory database; each test is rolled back. */
 @Transactional
 @SpringBootTest
-class BookRepositoryIntegrationTest {
+class BookRepositoryIntegrationIT {
     @Autowired
     private BookRepository bookRepository;
     @Autowired

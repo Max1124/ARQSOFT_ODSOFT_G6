@@ -1,0 +1,5 @@
+mvnw text eol=lf
+*.sh text eol=lf
+jenkins/hooks/* text eol=lf
+*.groovy text eol=lf
+jenkins/Jenkinsfile.* text eol=lf

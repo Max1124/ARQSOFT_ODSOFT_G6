@@ -7,7 +7,7 @@ import pt.psoft.g1.psoftg1.readermanagement.services.SearchReadersQuery;
 import pt.psoft.g1.psoftg1.shared.services.Page;
 
 /** Collaboration SUT: real repository criteria query, domain and transactional test database. */
-class ReaderSearchPersistenceTest extends ApiIntegrationTestSupport {
+class ReaderSearchPersistenceIT extends ApiIntegrationTestSupport {
     @Test void searchUsesPartialNamesExactEmailsAndPhones() {
         // Arrange
         var first = newReader("first-search@example.org");

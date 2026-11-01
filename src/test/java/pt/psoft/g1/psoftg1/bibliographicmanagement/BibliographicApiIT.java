@@ -47,7 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
         })
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class BibliographicApiTest {
+class BibliographicApiIT {
     static final String ISBN = "9780132350884";
     static final AtomicInteger googleCalls = new AtomicInteger(), openCalls = new AtomicInteger();
     static volatile int openStatus = 200;

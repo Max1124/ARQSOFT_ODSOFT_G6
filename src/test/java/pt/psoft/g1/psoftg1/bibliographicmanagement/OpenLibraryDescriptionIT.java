@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import pt.psoft.g1.psoftg1.bibliographicmanagement.infrastructure.OpenLibraryMapper;
 
 /** Mapper + JSON helper collaboration; response variants are controlled fixtures. */
-class OpenLibraryDescriptionTest {
+class OpenLibraryDescriptionIT {
     @Test void acceptsTextAndValueObjectDescriptionsButRejectsInvalidTypes() throws Exception {
         // Arrange
         var mapper=new OpenLibraryMapper(new ObjectMapper());

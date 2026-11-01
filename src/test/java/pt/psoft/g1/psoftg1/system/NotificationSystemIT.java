@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * directly. The notice day is set to 15 so that a lending made today is on it.
  */
 @TestPropertySource(properties = {"notification.channels=email,sms,webhook", "notification.due-date-notice-days=15"})
-class NotificationSystemTest extends ApiIntegrationTestSupport {
+class NotificationSystemIT extends ApiIntegrationTestSupport {
     private static final LocalSmtpReceiver SMTP = LocalSmtpReceiver.start();
     private static final LocalNotificationReceiver RECEIVER = LocalNotificationReceiver.start();
     private static final String LIBRARIAN_EMAIL = "maria@example.com";

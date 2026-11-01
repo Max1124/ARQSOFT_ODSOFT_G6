@@ -9,7 +9,7 @@ import pt.psoft.g1.psoftg1.genremanagement.services.*;
 import static org.assertj.core.api.Assertions.*;
 
 /** SUT: generated GenreViewMapper with real domain/DTO/view collaborators; in-process collaboration, not an isolated unit. */
-class GenreViewMapperCollaborationTest {
+class GenreViewMapperCollaborationIT {
     private final GenreViewMapper sut = Mappers.getMapper(GenreViewMapper.class);
 
     @Test

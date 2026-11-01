@@ -33,7 +33,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * 2 renewals of 7 days; Adaptive: 21/15/7 days; selection: 5 completed in 6 months, 90% on time).
  */
 @Tag("integration")
-class LendingApiComponentTest extends ApiIntegrationTestSupport {
+class LendingApiComponentIT extends ApiIntegrationTestSupport {
     private static final String LENDINGS = "/api/lendings";
 
     @Autowired

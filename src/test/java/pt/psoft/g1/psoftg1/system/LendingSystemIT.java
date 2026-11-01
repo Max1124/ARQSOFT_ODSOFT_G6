@@ -30,7 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * set-up is the librarian account (the application has no endpoint to create one) and the catalogue's genre and author.
  */
 @Tag("integration")
-class LendingSystemTest extends ApiIntegrationTestSupport {
+class LendingSystemIT extends ApiIntegrationTestSupport {
     private static final String LIBRARIAN_EMAIL = "maria@example.com";
     private static final String READER_EMAIL = "manuel@example.com";
 

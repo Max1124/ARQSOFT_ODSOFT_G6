@@ -39,11 +39,24 @@ pipeline {
             }
         }
 
-        // One build produces the jar. The area stages below test it; deploy stages only run if every area passed.
-        stage('Build and package') {
+        stage('Unit tests') {
             steps {
-                sh "${MVN} clean package -DskipTests"
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.unitTests() }
+                }
             }
+        }
+
+        stage('Existing integration tests') {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.existingIntegrationTests() }
+                }
+            }
+        }
+
+        stage('Build and package') {
+            steps { sh './mvnw -B package -DskipTests' }
         }
 
         stage('Lending policies (Guilherme)') {
@@ -89,6 +102,20 @@ pipeline {
                         }
                     }
                 }
+                stage('Bibliographic: integration tests') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicIntegrationTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicStaticAnalysis() }
+                        }
+                    }
+                }
                 stage('Bibliographic: mutation testing') {
                     when { expression { params.RUN_MUTATION } }
                     steps {
@@ -130,6 +157,14 @@ pipeline {
                              script { areas.notificationStaticAnalysis() }
                          }
                      }
+                }
+            }
+        }
+
+        stage('Global coverage') {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.globalCoverage() }
                 }
             }
         }

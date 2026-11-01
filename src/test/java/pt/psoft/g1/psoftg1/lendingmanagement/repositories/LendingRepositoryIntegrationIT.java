@@ -31,7 +31,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @Tag("integration")
 @Transactional
 @SpringBootTest
-public class LendingRepositoryIntegrationTest {
+public class LendingRepositoryIntegrationIT {
 
     @Autowired
     private LendingRepository lendingRepository;
