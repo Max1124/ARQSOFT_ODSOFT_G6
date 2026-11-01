@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="850" height="330" viewBox="0 0 850 330">
+<rect width="850" height="330" fill="white"/>
+<g font-family="Arial,sans-serif" fill="#20252b">
+<text x="24" y="30" font-size="20">Test coverage — recorded application snapshots</text>
+<text x="24" y="53" font-size="12">Scopes and generated-code filtering differ; percentages are descriptive.</text>
+<text x="24" y="103" font-size="14">Instructions</text>
+<rect x="150" y="88" width="66.50" height="18" fill="#9ba4ae"/>
+<text x="226.50" y="102" font-size="12">As-is: 13.30%</text>
+<rect x="150" y="112" width="462.49" height="18" fill="#23659b"/>
+<text x="622.49" y="126" font-size="12">To-be: 92.50%</text>
+<text x="24" y="168" font-size="14">Lines</text>
+<rect x="150" y="153" width="97.00" height="18" fill="#9ba4ae"/>
+<text x="257.00" y="167" font-size="12">As-is: 19.40%</text>
+<rect x="150" y="177" width="460.92" height="18" fill="#23659b"/>
+<text x="620.92" y="191" font-size="12">To-be: 92.18%</text>
+<text x="24" y="233" font-size="14">Branches</text>
+<text x="150" y="232" font-size="12">As-is: not recorded</text>
+<rect x="150" y="242" width="403.86" height="18" fill="#23659b"/>
+<text x="563.86" y="256" font-size="12">To-be: 80.77%</text>
+<text x="24" y="315" font-size="12">Source: archived as-is report and current complete JaCoCo XML.</text>
+</g></svg>

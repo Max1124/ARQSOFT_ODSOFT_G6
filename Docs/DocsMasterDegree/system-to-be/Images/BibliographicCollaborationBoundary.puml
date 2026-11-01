@@ -3,18 +3,25 @@
 left to right direction
 skinparam shadowing false
 skinparam backgroundColor white
-title Bibliographic retrieval collaboration boundary
+title Bibliographic API lookup collaboration boundary
 component "Test inputs\nand assertions" as Test
 rectangle "Declared real collaboration SUT" {
- component Controller
- component "Bibliographic service" as Service
- component "Provider adapter\nand mapper" as Adapter
- component "Real merge" as Merge
- Controller --> Service
+ component BibliographicController as Controller
+ component BibliographicRegistrationService as Registration
+ component BibliographicService as Service
+ component "Provider adapters, mappers\nand real HTTP transport" as Adapter
+ component BibliographicMerge as Merge
+ component CatalogueMatcher as Catalogue
+ database "Catalogue repositories\nand test H2 database" as Repositories
+ Controller --> Registration
+ Registration --> Service
+ Registration --> Catalogue
+ Catalogue --> Repositories
  Service --> Adapter
  Service --> Merge
 }
 component "Local HTTP provider double\n(outside SUT)" as HTTP
 Test --> Controller
 Adapter --> HTTP
+note bottom of Registration : Lookup resolves catalogue suggestions without saving a book.\nRegistration workflows additionally exercise BookService and persistence.
 @enduml

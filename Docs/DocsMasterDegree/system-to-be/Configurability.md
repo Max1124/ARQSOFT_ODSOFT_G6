@@ -1,6 +1,6 @@
 # ADD — Configurability
 
-Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](Evidence/BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
 Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
 
@@ -252,7 +252,7 @@ At startup the binding reads the lending properties and builds the three paramet
 
 **Pending decisions:**
 
-- Bibliographic settings and loading are specified in [the implementation report](BibliographicImplementation.md). Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
+- Bibliographic settings and loading are specified in [the implementation report](Evidence/BibliographicImplementation.md). Lending keys are decided: `lending.standard.*`, `lending.adaptive.*` and `lending.selection.*` in `config/library.properties`.
 - Lending: the old `lendingDurationInDays` key was replaced by `lending.standard.lending-period-days`, and `MinOnTimeRatio` is a percentage (`lending.selection.min-on-time-ratio-percent`).
 - Bibliographic empty-list rejection is implemented.
 
@@ -275,7 +275,7 @@ Related concerns: extension of sources, channels and policies (QAS1–QAS3) is i
 - **Goal:** Implemented bibliographic.sources binding, identifier validation and immutable ordered selection at startup.
 - **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
 - **Verification:** Startup tests accept single/combined sources and reversed order, reject invalid settings, and test order preservation. Spring external-file loading and environment overrides are documented; the same-artifact Azure experiment and setup-time measurement remain unperformed.
-- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Evidence:** Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](Evidence/BibliographicImplementation.md).
 - **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 
 ### Analysis and next verification — Iterations 2 and 3

@@ -1,6 +1,6 @@
 # Technical Memo — CFG-BIB: Bibliographic configurability
 
-To see the implementation: [implemented contracts and verification](../../BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
+To see the implementation: [implemented contracts and verification](../../Evidence/BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Configurability — Iteration 1](../../Configurability.md). Primary driver: US5/QAS4; related QAS1/QAS9 and EXT-BIB-04. Faculty basis: Project 1 section 1.3.3.1. Related designs: [Extensibility](../../Extensibility.md) and [Testability](../../Testability.md).
 
@@ -50,4 +50,4 @@ The choice meets setup selection while reusing the extensibility interface and t
 
 ## Verification
 
-52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../BibliographicImplementation.md).
+Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../Evidence/BibliographicImplementation.md).

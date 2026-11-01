@@ -2,7 +2,6 @@
 skinparam shadowing false
 skinparam backgroundColor white
 title Bibliographic lookup - both sources enabled
-actor Librarian
 participant BibliographicController as API
 participant BibliographicRegistrationService as Registration
 participant BibliographicService as Service
@@ -10,7 +9,7 @@ participant GoogleBooksAdapter as Google
 participant OpenLibraryAdapter as Open
 participant BibliographicMerge as Merge
 participant CatalogueMatcher as Catalogue
-Librarian -> API : GET /api/bibliographic/{isbn}
+[o-> API : Librarian: GET /api/bibliographic/{isbn}
 API -> Registration : preview(isbn)
 Registration -> Service : retrieve(isbn)
 Service -> Google : lookupByIsbn(isbn)
@@ -20,9 +19,10 @@ Open --> Service : SourceOutcome
 Service -> Merge : combine(isbn, all outcomes)
 Merge --> Service : LookupResult (data, outcomes, warnings)
 Service --> Registration : LookupResult
-Registration -> Catalogue : resolve(data, empty overrides)
+Registration -> Catalogue : resolve(data, RegistrationRequest.empty())
 Catalogue --> Registration : CatalogueResolution (suggestions, needs)
 Registration --> API : Preview(lookup, catalogue)
-API --> Librarian : Metadata, warnings and completion needs
+[o<-- API : Metadata, warnings and completion needs
+note over Service,Open : Sources are called sequentially in configured order.\nThis example enables Google Books before Open Library.
 note over Registration,Catalogue : Lookup does not save a book or create authors/genres.
 @enduml

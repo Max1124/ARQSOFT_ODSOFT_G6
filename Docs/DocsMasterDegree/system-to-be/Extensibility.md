@@ -1,6 +1,6 @@
 # ADD — Extensibility
 
-For bibliographic implementation, see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+For bibliographic implementation, see [implementation, API and verification](Evidence/BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
 For notification implementation, see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
 
@@ -313,11 +313,13 @@ For lending policies, the suggested placement is `lendingmanagement.services.pol
 
 ![Bibliographic retrieval sequence](Images/BibliographicRetrievalSequence.png)
 
+[PlantUML source](Images/BibliographicRetrievalSequence.puml). The filled circle represents the external librarian sending the request and receiving the response. This scenario calls Google Books and then Open Library, following the configured source order.
+
 ### Structural sketch — Source extension point
 
 ![Bibliographic source structure](Images/BibliographicSourceStructure.png)
 
-**Confirmed behaviour:** data, source-order priority, list handling, conservative catalogue association and lookup/registration separation are specified in [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions); source outcomes are agreed in the testability memo. **Implementation details:** contracts, source documentation and correspondence storage are recorded in [the implementation report](BibliographicImplementation.md). This sequence shows lookup and catalogue resolution, not book persistence. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
+**Confirmed behaviour:** data, source-order priority, list handling, conservative catalogue association and lookup/registration separation are specified in [ADD.md](ADD.md#bibliographic-behaviour--confirmed-decisions); source outcomes are agreed in the testability memo. **Implementation details:** contracts, source documentation and correspondence storage are recorded in [the implementation report](Evidence/BibliographicImplementation.md). This sequence shows lookup and catalogue resolution, not book persistence. Full ISBN-only completion cannot be guaranteed when required catalogue data is missing.
 
 ### Sequence sketch — Notification methods information
 
@@ -371,7 +373,7 @@ This board evaluates the extensibility drivers at design level. Not addressed me
 - **Goal:** Implemented source contract, adapters, normalized data and separate merge support limited-impact source additions.
 - **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
 - **Verification:** The third fake-source experiment exercises real selection/coordinator/merge without changing existing production providers or coordinator; disabled sources receive no calls.
-- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Evidence:** Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](Evidence/BibliographicImplementation.md).
 - **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 ### Analysis — Iteration 2
 

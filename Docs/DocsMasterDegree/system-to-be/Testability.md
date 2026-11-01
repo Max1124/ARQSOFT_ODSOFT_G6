@@ -1,10 +1,12 @@
 # ADD — Testability
 
-Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](Evidence/BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
 Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
 
 Requirements and scenarios: ADD.md. Organization follows the faculty material Something about Attribute-Driven Design 0.9, Steps 1–8. The detailed rationale is recorded in the linked technical memos.
+
+Current measured evidence: [test quantity](Test%20Health%20Metrics/Quantity.md) and [test quality](Test%20Health%20Metrics/Quality.md). These snapshots distinguish source methods, executed cases, complete-suite coverage and scoped mutation results; historical results below retain their original scope and date.
 
 ## Step 1 — Review inputs
 
@@ -401,6 +403,18 @@ Do not assert only `notNull`, hide the sole assertion inside an optional branch,
 
 This is a focused view of implemented testability dependencies, not a complete class inventory. Constructors expose collaborators and communication, mapping and merge are separated. Tests that execute real helpers or value objects are identified as small collaborations in the implementation report.
 
+### Bibliographic coordinator test boundary
+
+![Bibliographic coordinator test boundary](Images/BibliographicClassIsolation.png)
+
+[PlantUML source](Images/BibliographicClassIsolation.puml). Source and merge collaborators are replaced with doubles; the coordinator still executes the real ISBN validator. This is a small collaboration under the classroom isolation convention.
+
+### Bibliographic API lookup collaboration boundary
+
+![Bibliographic API lookup collaboration boundary](Images/BibliographicCollaborationBoundary.png)
+
+[PlantUML source](Images/BibliographicCollaborationBoundary.puml). The API integration tests execute real controller, registration service, coordinator, adapters, mappers, HTTP transport, catalogue matcher and H2-backed repositories. Only the external provider endpoints are local HTTP doubles. This view focuses on lookup; registration workflows additionally exercise book creation and persistence.
+
 ### Notification Method isolation boundary
 
 ![Notification Method class isolation boundary](Images/NotificationMethodClassIsolation.png)
@@ -442,7 +456,7 @@ The columns are independent status lists: cells on the same row are not related.
 - **Goal:** Implemented constructor injection, transport abstraction, separate mapping/merge and explicit outcomes support controlled verification.
 - **Trade-off:** extra contracts and fixtures isolate changes but need maintenance; controlled tests do not guarantee live-provider availability.
 - **Verification:** Class, domain, collaboration and real HTTP/JWT system scopes are exercised with local providers. Helpers/value objects executing real behaviour are declared as collaboration, not strict single-class isolation.
-- **Evidence:** 52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](BibliographicImplementation.md).
+- **Evidence:** Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [scope and reproduction](Evidence/BibliographicImplementation.md).
 - **Remaining validation:** Google live success after the observed HTTP 429, Jenkins profile integration and Azure deployment. These are not claimed as completed.
 
 ### Analysis — Iteration 2

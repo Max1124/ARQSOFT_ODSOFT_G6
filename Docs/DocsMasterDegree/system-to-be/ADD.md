@@ -1,10 +1,12 @@
 # ADD
 
-Bibliographic implementation update (2026-10-28): see [implementation, API and verification](BibliographicImplementation.md). The evidence applies to iteration 1 only.
+Bibliographic implementation update (2026-10-28): see [implementation, API and verification](Evidence/BibliographicImplementation.md). The evidence applies to iteration 1 only.
 
 Notification implementation update (2026-10-30): see [implementation, API and verification](NotificationImplementation.md). The evidence applies to iteration 2 only.
 
 This file details the ADD process used to develop new functionalities.
+
+Current verification snapshot: [to-be test health metrics](Test%20Health%20Metrics/README.md), including quantity, reviewed test quality and complete-suite coverage, with comparison limits against the as-is assessment.
 
 ## Design iterations
 
@@ -75,8 +77,6 @@ Below are listed the non-functional and functional requirements
 - **Catalogue associations:** associate a genre automatically only when exactly one catalogue entry matches after trimming outer whitespace and ignoring case. Multiple matching suggestions remain ambiguous and require librarian selection. A matching author name alone is a suggestion; automatic author association requires a reliable previously confirmed correspondence. Otherwise ask the librarian to select or explicitly create the author. Retrieval never creates authors or genres automatically.
 - **Workflow:** separate lookup without persistence from ISBN-based registration. Register directly only when mandatory data and catalogue associations are resolved; otherwise return the retrieved information and completion needs without saving an incomplete book. The librarian can correct the proposed data.
 - **Configuration:** read an external ordered source list at startup; invalid configuration prevents startup and changes take effect after restart. Provider communication remains behind `BibliographicTransport` with a defined timeout.
-
-These behavioural decisions are implemented. Java/REST contracts, confirmed author correspondence storage, external configuration loading and HTTP client settings are documented in [the implementation report](BibliographicImplementation.md). Search by title is a future enhancement, outside the current iteration.
 
 ### Lending rules from the faculty specification
 Scope for this three-person group: all sections of the *ARQSOFT 2026-2027 Lending Policies Specification v1.0* apply, including section 4 (automatic policy selection, brief 1.3.3.3 item 3) and section 5 (external setup-time parameter configuration, US10/QAS7).

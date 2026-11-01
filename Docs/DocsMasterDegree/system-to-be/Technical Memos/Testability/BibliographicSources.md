@@ -1,6 +1,6 @@
 # Technical Memo — TST-BIB: Bibliographic testability
 
-To see the implementation: [implemented contracts and verification](../../BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
+To see the implementation: [implemented contracts and verification](../../Evidence/BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Testability, iteration 1](../../Testability.md). Primary driver: QAS9; related US1/US3 and QAS4. Test categories from ProjectStatement.pdf section 1.3.3.4 constrain later verification.
 
@@ -73,4 +73,4 @@ B is selected to support QAS9 and matches Step 4 of Testability.md. A narrow tra
 
 ## Verification
 
-52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../BibliographicImplementation.md).
+Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../Evidence/BibliographicImplementation.md).

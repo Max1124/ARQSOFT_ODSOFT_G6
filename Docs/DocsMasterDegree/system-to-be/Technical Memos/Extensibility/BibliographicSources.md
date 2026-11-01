@@ -1,6 +1,6 @@
 # Technical Memo — EXT-BIB-01: Bibliographic source extensibility
 
-To see the implementation: [implemented contracts and verification](../../BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
+To see the implementation: [implemented contracts and verification](../../Evidence/BibliographicImplementation.md). The decisions below describe the implementation; the report records contracts and evidence.
 
 Related iteration: [Extensibility, iteration 1](../../Extensibility.md). Drivers: US4/QAS1, with US1/US3, US5/QAS4 and QAS9. Faculty basis: Project 1 section 1.3.3.1 and the Technical Memo examples in *Something about Attribute-Driven Design 0.9* (PDF pages 56 and 85-87).
 
@@ -59,4 +59,4 @@ New providers can implement the same contract without provider-specific branches
 
 ## Verification
 
-52 bibliographic tests pass; coverage is 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../BibliographicImplementation.md).
+Recorded on 2026-10-28: 52 bibliographic tests passed; coverage was 96.10% lines and 80.25% branches for the new module. PIT killed 38/38 mutants in BibliographicMerge, SourceSelection and AuthorCorrespondence. Full regression passed 570 tests before the final 11 bibliographic cases were added. See [commands, SUT boundaries and limitations](../../Evidence/BibliographicImplementation.md).
