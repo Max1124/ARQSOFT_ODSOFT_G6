@@ -124,6 +124,13 @@ pipeline {
                         }
                     }
                 }
+                stage('Notification: static analysis') {
+                     steps {
+                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                             script { areas.notificationStaticAnalysis() }
+                         }
+                     }
+                }
             }
         }
 

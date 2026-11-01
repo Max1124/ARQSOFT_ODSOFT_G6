@@ -118,6 +118,13 @@ pipeline {
                         }
                     }
                 }
+                stage('Notification: static analysis') {
+                     steps {
+                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                             script { areas.notificationStaticAnalysis() }
+                         }
+                     }
+                }
             }
         }
 
@@ -128,10 +135,10 @@ pipeline {
             }
         }
 
-        stage('Deploy to dev') {
+        stage('Deploy to staging') {
             when { expression { currentBuild.currentResult == 'SUCCESS' } }
             steps {
-                sh "deploy/deploy.sh dev ${JAR}"
+                sh "deploy/deploy.sh uat ${JAR}"
             }
         }
     }

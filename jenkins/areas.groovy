@@ -109,4 +109,13 @@ def notificationMutation() {
     }
 }
 
+def notificationStaticAnalysis() {
+    try {
+        sh "${env.MVN_NOT} spotbugs:spotbugs"
+        sh 'cp target/spotbugsXml.xml target/spotbugsXml-notification.xml'
+    } finally {
+        archiveArtifacts artifacts: 'target/spotbugsXml-notification.xml', allowEmptyArchive: true
+    }
+}
+
 return this
