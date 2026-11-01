@@ -92,7 +92,7 @@ Stop it with Ctrl+C. Next time repeat this step; your jobs and settings are kept
 
 1. Dashboard, New Item, name `lms-local`, type **Pipeline**, OK.
 2. Tick **This project is parameterized**, Add Parameter, String Parameter: name `BRANCH`, default `main`.
-3. Build Triggers: tick **Trigger builds remotely** and set the authentication token to `lms-local`.
+3. When using a Jenkins user and API token with Build permission (Step 7), no remote job token is required. **Trigger builds remotely** with token `lms-local` is an optional legacy alternative.
 4. Pipeline: Definition **Pipeline script from SCM**, SCM **Git**.
    - Repository URL: the path of your clone, as the system running Jenkins sees it.
      WSL with the repository on the Windows drive: `/mnt/c/Users/User/source/repos/psoft-project-2024-g1`.
@@ -126,6 +126,16 @@ Commits made from Windows tools (VS Code, GitHub Desktop) run the hook with Git 
 variables in Windows (`setx JENKINS_URL http://localhost:9090`, and likewise the other two), then open the tool again.
 If you commit from the WSL terminal, the steps above are enough.
 
+The API token authenticates your Jenkins user. It is different from the optional remote job token. The hook sends the remote job token only when user/API-token authentication is absent, because an incorrect extra job token causes HTTP 403 even for an authenticated user.
+
+If variables were saved in the Windows user environment after your terminal or IDE was opened, restart that application or load them into the current PowerShell session before committing:
+
+```powershell
+"JENKINS_URL", "JENKINS_USER", "JENKINS_API_TOKEN" | ForEach-Object {
+    [Environment]::SetEnvironmentVariable($_, [Environment]::GetEnvironmentVariable($_, "User"), "Process")
+}
+```
+
 #### If something goes wrong
 
 | Symptom | Fix |
@@ -138,7 +148,7 @@ If you commit from the WSL terminal, the steps above are enough.
 | `publishHTML` not found | The HTML Publisher plugin is missing (Step 4.4). |
 | `TypeTag :: UNKNOWN` in the build, or "No JDK 17 found" | Install JDK 17 (Step 1) or fill the build parameter `JAVA_HOME_17` with its folder. |
 | Hook prints "could not reach the local Jenkins" | Jenkins is not running, or `JENKINS_URL` is wrong. |
-| Hook runs but no build starts (HTTP 403 or 404 is hidden) | Check the job name `lms-local`, the token `lms-local`, and `JENKINS_USER` / `JENKINS_API_TOKEN`. Test by hand: `curl -i -X POST -u "$JENKINS_USER:$JENKINS_API_TOKEN" "$JENKINS_URL/job/lms-local/buildWithParameters?token=lms-local&BRANCH=main"`. |
+| Hook reports HTTP 401, 403 or 404 | For 401/403, check `JENKINS_USER`, `JENKINS_API_TOKEN` and the user's Build permission. For 404, check `JENKINS_URL` and `LMS_LOCAL_JOB`. Test by hand: `curl -i -X POST -u "$JENKINS_USER:$JENKINS_API_TOKEN" "$JENKINS_URL/job/lms-local/buildWithParameters?BRANCH=main"`. |
 | Bash says `\r: command not found` | The scripts got Windows line endings: `sed -i 's/\r$//' jenkins/hooks/* jenkins/local/*`. |
 
 ### 2. Staging (pipeline 2) on the Azure Jenkins

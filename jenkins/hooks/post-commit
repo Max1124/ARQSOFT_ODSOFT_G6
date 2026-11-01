@@ -9,13 +9,29 @@ token="${LMS_LOCAL_TOKEN:-lms-local}"
 branch="$(git rev-parse --abbrev-ref HEAD)"
 
 auth=()
+job_auth=()
 if [ -n "${JENKINS_USER:-}" ] && [ -n "${JENKINS_API_TOKEN:-}" ]; then
   auth=(-u "${JENKINS_USER}:${JENKINS_API_TOKEN}")
+else
+  # Legacy remote-job authentication. An authenticated user with Build permission
+  # needs no job token; an incorrect extra token makes Jenkins reject even that user.
+  job_auth=(--data-urlencode "token=${token}")
 fi
 
-if curl -fsS -m 5 -X POST "${auth[@]}" --data-urlencode "token=${token}" --data-urlencode "BRANCH=${branch}" "${url}/job/${job}/buildWithParameters" >/dev/null 2>&1; then
+http_code=$(curl -sS -m 5 -o /dev/null -w '%{http_code}' -X POST "${auth[@]}" "${job_auth[@]}" \
+  --data-urlencode "BRANCH=${branch}" "${url}/job/${job}/buildWithParameters")
+curl_status=$?
+
+if [ "$curl_status" -ne 0 ]; then
+  echo "post-commit: could not connect to ${url}; no build started" >&2
+elif [ "$http_code" = 200 ] || [ "$http_code" = 201 ] || [ "$http_code" = 202 ]; then
   echo "post-commit: local pipeline started for ${branch} (${url}/job/${job}/)"
 else
-  echo "post-commit: could not reach the local Jenkins at ${url}; no build started" >&2
+  echo "post-commit: Jenkins returned HTTP ${http_code}; no build started" >&2
+  if [ "$http_code" = 401 ] || [ "$http_code" = 403 ]; then
+    echo "post-commit: check JENKINS_USER and JENKINS_API_TOKEN in the environment used by Git" >&2
+  elif [ "$http_code" = 404 ]; then
+    echo "post-commit: check LMS_LOCAL_JOB and the Jenkins URL" >&2
+  fi
 fi
 exit 0
