@@ -16,7 +16,7 @@ import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import pt.psoft.g1.psoftg1.bibliographicmanagement.configuration.*;
 import pt.psoft.g1.psoftg1.bibliographicmanagement.services.*;
 
-class BibliographicConfigurationTest {
+class BibliographicConfigurationIT {
     private final ApplicationContextRunner context =
             new ApplicationContextRunner()
                     .withUserConfiguration(BibliographicConfiguration.class)

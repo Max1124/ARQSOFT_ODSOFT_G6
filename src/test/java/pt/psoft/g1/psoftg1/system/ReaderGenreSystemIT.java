@@ -30,7 +30,7 @@ import static org.assertj.core.api.Assertions.assertThat;
         "spring.datasource.url=jdbc:h2:mem:readerGenreSystem;DB_CLOSE_DELAY=-1",
         "spring.jpa.hibernate.ddl-auto=create-drop", "spring.profiles.active=test"})
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
-class ReaderGenreSystemTest {
+class ReaderGenreSystemIT {
     @LocalServerPort int port;
     @Autowired UserRepository users;
     @Autowired GenreRepository genres;

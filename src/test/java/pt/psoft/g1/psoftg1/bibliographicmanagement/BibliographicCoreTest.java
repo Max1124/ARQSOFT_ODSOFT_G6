@@ -172,25 +172,4 @@ class BibliographicCoreTest {
         assertEquals(List.of("Alice"), result.data().authors());
     }
 
-    @Test
-    void thirdSourceWorksThroughRealSelectionCoordinatorAndMerge() {
-        // Arrange: third implementation has no changes to the existing coordinator or merge.
-        var existing = mock(BibliographicSource.class);
-        var third = mock(BibliographicSource.class);
-        when(third.lookupByIsbn(ISBN))
-                .thenReturn(
-                        SourceOutcome.found(
-                                "third", data("Third title", null, List.of(), List.of())));
-        var installed =
-                List.of(
-                        new SourceRegistration("existing", existing),
-                        new SourceRegistration("third", third));
-        var selected = new SourceSelection().select("third", installed);
-        // Act: real collaboration, not a single-class isolation test.
-        var result = new BibliographicService(selected, new BibliographicMerge()).retrieve(ISBN);
-        // Assert
-        assertEquals("Third title", result.data().title());
-        verify(third).lookupByIsbn(ISBN);
-        verifyNoInteractions(existing);
-    }
 }

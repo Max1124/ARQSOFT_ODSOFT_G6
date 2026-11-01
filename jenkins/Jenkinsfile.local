@@ -10,6 +10,7 @@ pipeline {
     }
 
     parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch selected by the local commit hook')
         booleanParam(name: 'RUN_MUTATION', defaultValue: false, description: 'Run PIT on the lending, bibliographic and notification classes (slow)')
         string(name: 'JAVA_HOME_17', defaultValue: '', description: 'Optional: folder of a JDK 17. Empty = found automatically (macOS, Linux, WSL). Lombok 1.18.30 does not compile on newer JDKs')
     }
@@ -37,11 +38,24 @@ pipeline {
             }
         }
 
-        // One build produces the jar. The area stages below test it; deploy stages only run if every area passed.
-        stage('Build and package') {
+        stage('Unit tests') {
             steps {
-                sh "${MVN} clean package -DskipTests"
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.unitTests() }
+                }
             }
+        }
+
+        stage('Existing integration tests') {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.existingIntegrationTests() }
+                }
+            }
+        }
+
+        stage('Build and package') {
+            steps { sh './mvnw -B package -DskipTests' }
         }
 
         stage('Lending policies (Guilherme)') {
@@ -77,6 +91,13 @@ pipeline {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
                             script { areas.bibliographicTests() }
+                        }
+                    }
+                }
+                stage('Bibliographic: integration tests') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.bibliographicIntegrationTests() }
                         }
                     }
                 }
@@ -117,5 +138,13 @@ pipeline {
                 }
             }
         }
+        stage('Global coverage') {
+            steps {
+                catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                    script { areas.globalCoverage() }
+                }
+            }
+        }
+
     }
 }

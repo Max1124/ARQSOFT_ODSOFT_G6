@@ -31,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Only authentication is simulated; policy values come from library.properties (Standard: 3 active, 15 days,
  * 2 renewals of 7 days; Adaptive: 21/15/7 days; selection: 5 completed in 6 months, 90% on time).
  */
-class LendingApiComponentTest extends ApiIntegrationTestSupport {
+class LendingApiComponentIT extends ApiIntegrationTestSupport {
     private static final String LENDINGS = "/api/lendings";
 
     @Autowired

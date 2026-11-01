@@ -6,7 +6,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @SpringBootTest
-class PsoftG1ApplicationTests {
+class PsoftG1ApplicationIT {
 
 	@Test
 	void contextLoads() {

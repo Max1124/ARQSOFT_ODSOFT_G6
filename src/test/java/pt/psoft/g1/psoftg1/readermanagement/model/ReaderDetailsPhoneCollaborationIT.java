@@ -13,7 +13,7 @@ import static org.mockito.Mockito.*;
  * The public constructor prepares a valid aggregate; Reader and request are mocks.
  * Reflection supplies only the JPA-managed version. Real value-object behavior makes this
  * a multi-class collaboration, not an isolated ReaderDetails unit test. */
-class ReaderDetailsPhoneCollaborationTest {
+class ReaderDetailsPhoneCollaborationIT {
     @Test
     void patchUpdatesIdentityBirthDatePhotoAndInterestsWithMatchingVersion() {
         // Arrange

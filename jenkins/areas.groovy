@@ -7,8 +7,10 @@
 
 def lendingTests() {
     try {
+        sh 'rm -f target/jacoco.exec'
         sh "${env.MVN} verify"
     } finally {
+        saveCoverage('target/jacoco.exec', 'lending')
         junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
         publishHTML(target: [reportDir: 'target/site/jacoco', reportFiles: 'index.html',
                              reportName: 'JaCoCo (lending)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
@@ -39,6 +41,7 @@ def bibliographicTests() {
         // Do not clean: preserve the packaged JAR and the lending reports.
         sh "${env.MVN_BIB} test"
     } finally {
+        saveCoverage('target/jacoco-bibliographic.exec', 'bibliographic-unit')
         junit testResults: 'target/surefire-reports-bibliographic/*.xml', allowEmptyResults: true
         publishHTML(target: [reportDir: 'target/site/jacoco-bibliographic', reportFiles: 'index.html',
                              reportName: 'JaCoCo (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
@@ -66,6 +69,7 @@ def notificationTests() {
         sh "${env.MVN_NOT} test"
         sh 'rm -rf target/site/jacoco-notification && cp -r target/site/jacoco target/site/jacoco-notification'
     } finally {
+        saveCoverage('target/jacoco.exec', 'notification')
         // This profile shares the surefire directory with the lending stage, so only its classes are published.
         junit testResults: 'target/surefire-reports/TEST-*Notification*.xml', allowEmptyResults: true
         publishHTML(target: [reportDir: 'target/site/jacoco-notification', reportFiles: 'index.html',
@@ -81,8 +85,9 @@ def notificationIntegrationTests() {
             sh 'bash jenkins/run-notification-its.sh'
         }
     } finally {
-        junit testResults: 'target/surefire-reports/TEST-*IT.xml', allowEmptyResults: true
-        archiveArtifacts artifacts: 'target/surefire-reports/TEST-*IT.xml,target/notification-its/**', allowEmptyArchive: true
+        saveCoverage('target/jacoco-notification-it.exec', 'notification-it')
+        junit testResults: 'target/surefire-reports-notification-it/TEST-*IT.xml', allowEmptyResults: true
+        archiveArtifacts artifacts: 'target/surefire-reports-notification-it/TEST-*IT.xml,target/notification-its/**', allowEmptyArchive: true
     }
 }
 
@@ -94,6 +99,54 @@ def notificationMutation() {
         publishHTML(target: [reportDir: 'target/pit-reports-notification', reportFiles: 'index.html',
                              reportName: 'PIT (notification)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
         archiveArtifacts artifacts: 'target/pit-reports-notification/**', allowEmptyArchive: true
+    }
+}
+
+def unitTests() {
+    try {
+        sh './mvnw -B clean test -Dtest="*Test" -Dsurefire.reportsDirectory=target/surefire-reports-unit'
+    } finally {
+        saveCoverage('target/jacoco.exec', 'unit')
+        junit testResults: 'target/surefire-reports-unit/*.xml', allowEmptyResults: true
+    }
+}
+
+def existingIntegrationTests() {
+    try {
+        sh 'rm -f target/jacoco.exec'
+        sh './mvnw -B test -Dtest="*IT,!**/bibliographicmanagement/**,!*Notification*IT,!ScheduledNotificationCheckIT,!LendingSystemIT" -Dsurefire.reportsDirectory=target/surefire-reports-existing-it'
+    } finally {
+        saveCoverage('target/jacoco.exec', 'existing-it')
+        junit testResults: 'target/surefire-reports-existing-it/*.xml', allowEmptyResults: true
+    }
+}
+
+def bibliographicIntegrationTests() {
+    try {
+        sh 'bash jenkins/run-bibliographic-its.sh'
+    } finally {
+        saveCoverage('target/jacoco-bibliographic.exec', 'bibliographic-it')
+        junit testResults: 'target/surefire-reports-bibliographic-it/*.xml', allowEmptyResults: true
+        publishHTML(target: [reportDir: 'target/site/jacoco-bibliographic', reportFiles: 'index.html',
+                             reportName: 'JaCoCo (bibliographic)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+        archiveArtifacts artifacts: 'target/surefire-reports-bibliographic-it/**,target/site/jacoco-bibliographic/**,target/jacoco-bibliographic.exec', allowEmptyArchive: true
+    }
+}
+
+// Save each suite before another stage resets the default JaCoCo file.
+def saveCoverage(source, name) {
+    if (fileExists(source)) {
+        sh "mkdir -p target/coverage-data && cp '${source}' 'target/coverage-data/${name}.exec'"
+    }
+}
+
+def globalCoverage() {
+    try {
+        sh 'bash jenkins/publish-global-coverage.sh'
+    } finally {
+        publishHTML(target: [reportDir: 'target/site/jacoco-global', reportFiles: 'index.html',
+                             reportName: 'JaCoCo (global)', keepAll: true, allowMissing: true, alwaysLinkToLastBuild: true])
+        archiveArtifacts artifacts: 'target/site/jacoco-global/**,target/jacoco-global.exec,target/coverage-data/*.exec', allowEmptyArchive: true
     }
 }
 

@@ -25,7 +25,7 @@ import static org.hamcrest.Matchers.*;
         "spring.profiles.active=",
         "file.upload-dir=target/genre-component-uploads"
 })
-class GenreApiComponentTest extends ApiIntegrationTestSupport {
+class GenreApiComponentIT extends ApiIntegrationTestSupport {
     private static org.springframework.test.web.servlet.request.RequestPostProcessor librarian() {
         return jwt().authorities(new SimpleGrantedAuthority("ROLE_LIBRARIAN"));
     }

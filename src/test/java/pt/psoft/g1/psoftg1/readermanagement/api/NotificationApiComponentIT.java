@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * HTTP receiver for SMS. Authentication is simulated; the system test uses real tokens.
  */
 @TestPropertySource(properties = {"notification.channels=email,sms", "notification.due-date-notice-days=3"})
-class NotificationApiComponentTest extends ApiIntegrationTestSupport {
+class NotificationApiComponentIT extends ApiIntegrationTestSupport {
     private static final LocalSmtpReceiver SMTP = LocalSmtpReceiver.start();
     private static final LocalNotificationReceiver RECEIVER = LocalNotificationReceiver.start();
 

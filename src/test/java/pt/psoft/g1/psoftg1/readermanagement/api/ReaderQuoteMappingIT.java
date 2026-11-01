@@ -10,7 +10,7 @@ import pt.psoft.g1.psoftg1.genremanagement.model.Genre;
 import java.util.List;
 
 /** Collaboration: generated mapper, its base helpers and real domain fixture, with a local web context. */
-class ReaderQuoteMappingTest {
+class ReaderQuoteMappingIT {
     @AfterEach void cleanup() { RequestContextHolder.resetRequestAttributes(); }
     @Test void quoteViewPreservesIdentityConsentsInterestsAndPhotoLink() {
         // Arrange

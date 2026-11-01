@@ -1,7 +1,5 @@
 # Pipelines
 
-Three pipelines, one Jenkinsfile each. All three run the same per-student areas, defined once in `areas.groovy`.
-
 | # | File | Where | Fires on | Does |
 |---|---|---|---|---|
 | 1 | `Jenkinsfile.local` | your own Jenkins | every local commit (git hook) | build, then the three student areas; no deploy; mutation testing off by default |
@@ -10,7 +8,7 @@ Three pipelines, one Jenkinsfile each. All three run the same per-student areas,
 
 ## One stage per student
 
-Each pipeline shows three top-level stages, so the owner of a failure is obvious:
+Each pipeline has three student stages alongside the shared test stages and the final global coverage stage, so the owner of a failure is clear:
 
 | Stage | Owner | Maven profile | Inside |
 |---|---|---|---|
@@ -22,7 +20,7 @@ A failing area does not stop the other two from running (each leaf is wrapped in
 the archive and deploy stages are skipped. To change what an area runs, edit its Maven profile in `pom.xml` and its
 functions in `areas.groovy`; the three Jenkinsfiles do not change.
 
-Reports: `JaCoCo (lending|bibliographic|notification)` and `PIT (lending|bibliographic|notification)` on the build page.
+Reports: `JaCoCo (global)`, `JaCoCo (lending|bibliographic|notification)` and `PIT (lending|bibliographic|notification)` on the build page.
 
 ## Prod gate
 
@@ -91,14 +89,13 @@ Stop it with Ctrl+C. Next time repeat this step; your jobs and settings are kept
    **Lockable Resources**, tick them, Install, and tick "Restart Jenkins when installation is complete".
 
 #### Step 5. Create the `lms-local` job (once)
-The Azure Jenkins needs the plugins from Step 4 too, for pipelines 2 and 3. `deploy/setup-vm.sh` installs Node and Mailpit.
 
 1. Dashboard, New Item, name `lms-local`, type **Pipeline**, OK.
 2. Tick **This project is parameterized**, Add Parameter, String Parameter: name `BRANCH`, default `main`.
 3. Build Triggers: tick **Trigger builds remotely** and set the authentication token to `lms-local`.
 4. Pipeline: Definition **Pipeline script from SCM**, SCM **Git**.
    - Repository URL: the path of your clone, as the system running Jenkins sees it.
-     WSL with the repository on the Windows drive: `/mnt/c/Users/<you>/Documents/GitHub/arqsoft_odsoft/ARQSOFT_ODSOFT_G6`.
+     WSL with the repository on the Windows drive: `/mnt/c/Users/User/source/repos/psoft-project-2024-g1`.
      macOS: `/Users/<you>/.../ARQSOFT_ODSOFT_G6`.
    - Branches to build: `*/${BRANCH}`.
    - Script Path: `jenkins/Jenkinsfile.local`.
@@ -136,7 +133,7 @@ If you commit from the WSL terminal, the steps above are enough.
 | `Java 17 found; Jenkins needs 21 or newer` (or Jenkins says it is older than the minimum) | Set `JENKINS_JAVA_HOME` to a JDK 21+ folder before running the script (Step 3). The build still uses 17 through `JAVA_HOME_17`. |
 | `Address already in use` | Another Jenkins or program uses 9090. Stop it, or run `JENKINS_PORT=9191 bash jenkins/local/start-jenkins.sh` and use that port in the hook URL. |
 | Download of `jenkins.war` fails | Download it from <https://www.jenkins.io/download/> (Generic Java package, war) and save it as `~/jenkins-local/jenkins.war`. |
-| Build fails at checkout: `dubious ownership` | Run `git config --global --add safe.directory '*'` in the terminal that started Jenkins, then rebuild. |
+| Build fails at checkout: `dubious ownership` | Run `git config --global --add safe.directory /mnt/c/Users/User/source/repos/psoft-project-2024-g1` in the terminal that started Jenkins, then rebuild. |
 | Checkout fails: "local" repository not allowed | Jenkins was not started with `jenkins/local/start-jenkins.sh`, which sets the flag. Restart it with the script. |
 | `publishHTML` not found | The HTML Publisher plugin is missing (Step 4.4). |
 | `TypeTag :: UNKNOWN` in the build, or "No JDK 17 found" | Install JDK 17 (Step 1) or fill the build parameter `JAVA_HOME_17` with its folder. |
@@ -229,3 +226,84 @@ JAVA_HOME=$(bash jenkins/local/find-jdk17.sh) bash jenkins/run-notification-its.
 | `Port 1025`, `8025` or `8027 is already in use` | Close your own Mailpit or Mockoon, then rebuild. |
 | `./mvnw: /bin/sh^M: bad interpreter` when running by hand in WSL | Run `sed -i 's/\r$//' mvnw .mvn/wrapper/maven-wrapper.properties`. |
 | SMS tests fail with `Connection refused` | `notification.sms.gateway-url` in `src/test/resources/application.properties` must be `http://localhost:8027/message`. |
+
+## Test separation and validation in WSL
+
+To run all test selections without Jenkins: `bash jenkins/local/verify-checks.sh`.
+
+After Check Java, all three pipelines run:
+
+1. Unit tests: clean target and run classes ending in Test.
+2. Existing integration tests: run IT classes for existing behaviour, excluding Bibliographic, Notifications and LendingSystemIT, which run in their respective areas.
+3. Build and package: create the JAR without cleaning the reports again.
+4. Student areas: run tests, analysis and mutation testing as configured. Bibliographic has a separate integration test stage.
+5. STAGING deploys to dev; release deploys to UAT and requests approval for PROD.
+
+Integration and system test classes end in IT and remain in src/test/java.
+The student areas may repeat general tests to produce their own coverage reports.
+Do not activate all three student profiles in the same Maven invocation: each defines the test selection.
+Bibliographic integration tests use simulated providers and do not need a Google key or Internet access to contact providers.
+
+On Ubuntu, from the repository root:
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+export PATH="$JAVA_HOME/bin:$PATH"
+bash mvnw -B clean test -Dtest='*Test' -Dsurefire.reportsDirectory=target/surefire-reports-unit
+bash mvnw -B test -Dtest='*IT,!**/bibliographicmanagement/**,!*Notification*IT,!ScheduledNotificationCheckIT,!LendingSystemIT' -Dsurefire.reportsDirectory=target/surefire-reports-existing-it
+bash mvnw -B -Pbibliographic test
+bash jenkins/run-bibliographic-its.sh
+bash jenkins/run-notification-its.sh
+```
+
+### Google Books: private local configuration
+
+Bibliographic settings are defined in `src/main/resources/application.properties`.
+The property `bibliographic.google-books.api-key=${GOOGLE_BOOKS_API_KEY:}` receives the key
+from the `GOOGLE_BOOKS_API_KEY` environment variable; the actual key is not stored in the project or the JAR.
+In this WSL setup, new Bash terminals load the variable from
+`~/.config/lms/google-books.env`, a local file outside the repository with permissions 600.
+After changing the variable, restart the application so it inherits the new value.
+Applications started directly on Windows need the variable in their Windows environment.
+For an Azure deployment, provide the variable to the service running the JAR; a Jenkins credential
+is not automatically inherited by the deployed application. Do not copy the key into Git or logs.
+BIBLIOGRAPHIC_SOURCES and BIBLIOGRAPHIC_TIMEOUT_MS override the sources and timeout.
+
+### Local notifications
+
+The tests use SMS at localhost:8027/message with test-user/test-password, and SMTP at
+localhost:1025. The script starts Mailpit/Mockoon and stops them when the tests finish. No real credentials are required.
+Jenkins needs the Lockable Resources plugin to reserve the ports during these tests.
+
+### Testing the three flows
+
+First configure and run lms-local manually with the branch containing these changes.
+Then install the hook and make a work commit: the hook calls localhost:9090
+(or the explicit JENKINS_URL value). BRANCH is sent to the job and must be used for checkout.
+
+Once LOCAL passes, create a feature/<name> branch, make a small change and commit,
+validate LOCAL, then push that branch to test lms-staging and deployment to dev.
+Confirm the review and Jenkins build before merging into main. A push/merge to main triggers
+lms-pipeline: UAT, Newman and approval for PROD (keep AUTO_PROD=false during the trial).
+A local commit does not trigger Azure. Do not test release with a direct push to main just to experiment.
+The existing Azure addresses and deployment ports remain unchanged.
+
+### Bibliographic integration tests
+
+`jenkins/run-bibliographic-its.sh` runs only the Bibliographic `*IT` classes and is used by all three pipelines. It requires Java 17. The tests start and stop their own local HTTP providers on available ports, without Mockoon, Mailpit or a real Google key. Reports are saved in `target/surefire-reports-bibliographic-it`; coverage is appended to the bibliographic unit test coverage.
+
+On WSL, from the repository root: `JAVA_HOME=$(bash jenkins/local/find-jdk17.sh) bash jenkins/run-bibliographic-its.sh`.
+
+## Complete project coverage
+
+All three pipelines finish their test stages with **Global coverage**. Each suite saves a separate execution-data snapshot in `target/coverage-data` before another stage resets its working coverage file. The final step merges those snapshots and generates a report across all production classes. Repeated tests contribute the union of executed code; percentages are not added or averaged. Notification delivery tests also collect coverage in their own file.
+
+Open **JaCoCo (global)** in Jenkins, or `target/site/jacoco-global/index.html` locally. The conventional `target/site/jacoco/index.html` path is updated with the same final global report. Student reports remain available separately. Both line and instruction coverage are shown; compare the same metric and scope between runs. A report from `mvn test` alone covers only the default test selection and is not the complete unit-plus-integration result.
+
+To measure the entire project without Jenkins, with Java 17, Node and Mailpit installed, run from the repository root in WSL:
+
+```bash
+bash jenkins/run-global-coverage.sh
+```
+
+This starts with a clean build, runs all `*Test` and `*IT` classes, and runs the notification delivery and scheduled-check tests with Mailpit/Mockoon. It then merges the coverage data and generates HTML, XML and CSV reports. `bash jenkins/local/verify-checks.sh` also publishes global coverage after its existing checks. The publishing helper rejects missing suite snapshots instead of silently presenting incomplete data as a complete report. PIT is separate from this functional coverage measurement.

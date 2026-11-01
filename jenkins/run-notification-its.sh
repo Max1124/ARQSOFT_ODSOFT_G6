@@ -13,6 +13,7 @@ MOCKOON_PORT=8027
 MOCKOON_CLI_VERSION=9.10.0
 MOCK_FILE=src/test/resources/mockoon/notification-mocks.json
 LOG_DIR=target/notification-its
+REPORT_DIR=target/surefire-reports-notification-it
 MVN_NOT="${MVN_NOT:-./mvnw -B -Pnotification}"
 
 die() {
@@ -66,7 +67,9 @@ done
 unset NOTIFICATION_SMS_GATEWAY_URL NOTIFICATION_SMS_USERNAME NOTIFICATION_SMS_PASSWORD
 export MOCKOON_ADMIN_TOKEN="${MOCKOON_ADMIN_TOKEN:-notification-its}"
 
-mkdir -p "$LOG_DIR"
+mkdir -p "$LOG_DIR" "$REPORT_DIR"
+# A repeated manual run must not publish reports left by an interrupted selection.
+rm -f "$REPORT_DIR"/TEST-*.xml "$REPORT_DIR"/*.txt
 trap stop_services EXIT
 
 set -m
@@ -84,6 +87,6 @@ wait_for_port "Mailpit API" "$MAILPIT_API_PORT" "$mailpit_pid" "$LOG_DIR/mailpit
 wait_for_port "Mockoon" "$MOCKOON_PORT" "$mockoon_pid" "$LOG_DIR/mockoon.log"
 
 # The notification profile allows an empty selection, so it is refused here: a wrong name must not pass as green.
-# JaCoCo is off so this run does not overwrite the coverage report of the earlier stages.
+# Keep delivery coverage separate so the global report can include it without replacing earlier data.
 $MVN_NOT test -Dtest='*NotificationDeliveryIT,ScheduledNotificationCheckIT' \
-  -Dsurefire.failIfNoSpecifiedTests=true -Djacoco.skip=true
+  -Dsurefire.failIfNoSpecifiedTests=true -Dsurefire.reportsDirectory="$REPORT_DIR" -Djacoco.destFile=target/jacoco-notification-it.exec -Djacoco.append=false

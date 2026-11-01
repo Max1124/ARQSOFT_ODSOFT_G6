@@ -27,7 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Opaque-box test of controller + service + repositories + database for the author module (1.3.3.4.4); only authentication is simulated. */
-class AuthorApiComponentTest extends ApiIntegrationTestSupport {
+class AuthorApiComponentIT extends ApiIntegrationTestSupport {
     private Librarian librarian;
     private ReaderDetails reader;
     private Genre fantasy;

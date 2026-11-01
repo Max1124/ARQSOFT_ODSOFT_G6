@@ -29,7 +29,7 @@ import pt.psoft.g1.psoftg1.usermanagement.model.Reader;
 })
 @AutoConfigureMockMvc
 @Transactional
-class GenreCrudIntegrationTest {
+class GenreCrudIntegrationIT {
     @Autowired MockMvc mvc;
     @Autowired GenreRepository genres;
     @Autowired EntityManager em;
