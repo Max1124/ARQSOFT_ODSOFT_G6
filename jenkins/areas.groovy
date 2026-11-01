@@ -5,9 +5,21 @@
 
 // ---- Lending policies --------------------------------------------------------------------------------------------
 
-def lendingTests() {
+def lendingUnitTests() {
     try {
-        sh "${env.MVN} verify"
+        // Lending tests that start Spring or call the API are tagged "integration" and run in the next stage.
+        sh "${env.MVN} verify -DexcludedGroups=integration"
+    } finally {
+        junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
+    }
+}
+
+def lendingIntegrationTests() {
+    try {
+        // Own report folder per stage, so the unit results are not published twice.
+        sh 'rm -rf target/surefire-reports'
+        // jacoco.exec from the unit stage is kept, so the report published below covers both stages.
+        sh "${env.MVN} test -Dgroups=integration"
     } finally {
         junit testResults: 'target/surefire-reports/*.xml', allowEmptyResults: true
         publishHTML(target: [reportDir: 'target/site/jacoco', reportFiles: 'index.html',

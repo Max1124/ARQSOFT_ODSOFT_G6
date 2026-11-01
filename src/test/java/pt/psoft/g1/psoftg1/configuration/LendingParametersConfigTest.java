@@ -1,5 +1,6 @@
 package pt.psoft.g1.psoftg1.configuration;
 
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.AdaptivePolicyParameters;
@@ -9,6 +10,7 @@ import pt.psoft.g1.psoftg1.lendingmanagement.services.policy.StandardPolicyParam
 import static org.assertj.core.api.Assertions.assertThat;
 
 /** Setup-time binding of the lending properties; starts only the binding configuration, not the application. */
+@Tag("integration")
 class LendingParametersConfigTest {
 
     private final ApplicationContextRunner runner =

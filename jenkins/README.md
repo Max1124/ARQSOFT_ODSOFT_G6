@@ -14,7 +14,7 @@ Each pipeline shows three top-level stages, so the owner of a failure is obvious
 
 | Stage | Owner | Maven profile | Inside |
 |---|---|---|---|
-| Lending policies (Guilherme) | Guilherme | `-Plending` | tests + JaCoCo, SpotBugs, PIT |
+| Lending policies (Guilherme) | Guilherme | `-Plending` | unit tests, integration tests (Spring, API, database; tagged `integration`), JaCoCo, SpotBugs, PIT |
 | Bibliographic sources (Max1124) | Max1124 | `-Pbibliographic` | tests + JaCoCo, PIT |
 | Reader notifications (AlexandreMouraCosta) | AlexandreMouraCosta | `-Pnotification` | tests + JaCoCo, integration tests, PIT |
 
