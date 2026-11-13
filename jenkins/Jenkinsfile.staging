@@ -122,14 +122,14 @@ pipeline {
         }
 
         stage('Reader notifications (AlexandreMouraCosta)') {
-            stage('Notification: static analysis') {
-                 steps {
-                     catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
-                         script { areas.notificationStaticAnalysis() }
-                     }
-                 }
-            }
             stages {
+                stage('Notification: static analysis') {
+                    steps {
+                        catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
+                            script { areas.notificationStaticAnalysis() }
+                        }
+                    }
+                }
                 stage('Notifications: tests and coverage') {
                     steps {
                         catchError(buildResult: 'FAILURE', stageResult: 'FAILURE') {
